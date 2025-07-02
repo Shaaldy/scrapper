@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,34 +24,21 @@ class BotService {
     public BotService(BotConfig botConfig) {
         this.telegramBot = new TelegramBot(botConfig.telegramToken());
         this.state = State.START;
-        update();
-    }
-
-    protected void update(){
         telegramBot.setUpdatesListener(updates -> {
             for (Update update : updates) {
                 handleUpdate(update);
             }
             return UpdatesListener.CONFIRMED_UPDATES_ALL;
-        }, e -> {
-            if (e.response() != null) {
-                // got bad response from telegram
-                e.response().errorCode();
-                e.response().description();
-            } else {
-                // probably network error
-                e.printStackTrace();
-            }
         });
     }
 
     protected void handleUpdate(Update update) {
+        System.out.println("Текущее состояние: " + state);
         long chatId = update.message().chat().id();
         String text = update.message().text();
         if (state == State.START) {
             if (text.equals("/start")) {
                 sendMessage("Добро пожаловать, регистрация пройдена", chatId);
-                System.out.println("Пришло сообщение");
                 state = State.CONTINUE;
             } else {
                 sendMessage("Вы не зарегестрированы", chatId);
@@ -60,8 +48,14 @@ class BotService {
                 case "/start" -> sendMessage("Вы уже зарегестрированы", chatId);
                 case "/help" -> sendMessage("Команда помощи", chatId);
                 case "/list" -> sendMessage("Пока не реализовано", chatId);
-                case "/track" -> state = State.TRACKED;
-                case "/untrack" -> state = State.UNTRACKED;
+                case "/track" -> {
+                    sendMessage("Укажите ссылку для отслеживания: ", chatId);
+                    state = State.TRACKED;
+                }
+                case "/untrack" ->{
+                    sendMessage("Укажите ссылку, которую нужно удалить: ", chatId);
+                    state = State.UNTRACKED;
+                }
             }
         } else if (state == State.TRACKED) {
             handleTracked(text, chatId);
@@ -73,6 +67,9 @@ class BotService {
     private void handleTracked(String url, long chatId){
         if (isValidURL(url)){
             Set<String> trackedUrls = trackedLinks.get(chatId);
+            if (trackedUrls==null){
+                trackedUrls = new HashSet<>();
+            }
             trackedUrls.add(url);
             trackedLinks.put(chatId,trackedUrls);
             sendMessage("Ссылка добавлена", chatId);
