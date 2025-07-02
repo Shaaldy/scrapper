@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 enum State {START, TRACKED, UNTRACKED, CONTINUE}
 
 @Service
-class BotService {
+public class BotService {
 
     TelegramBot telegramBot;
     State state;
