@@ -4,14 +4,17 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.SendMessage;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+
+enum State {START, TRACKED, UNTRACKED, CONTINUE}
 
 @Service
 class BotService {
@@ -52,7 +55,7 @@ class BotService {
                     sendMessage("Укажите ссылку для отслеживания: ", chatId);
                     state = State.TRACKED;
                 }
-                case "/untrack" ->{
+                case "/untrack" -> {
                     sendMessage("Укажите ссылку, которую нужно удалить: ", chatId);
                     state = State.UNTRACKED;
                 }
@@ -64,43 +67,39 @@ class BotService {
         }
     }
 
-    private void handleTracked(String url, long chatId){
-        if (isValidURL(url)){
+    private void handleTracked(String url, long chatId) {
+        if (isValidURL(url)) {
             Set<String> trackedUrls = trackedLinks.get(chatId);
-            if (trackedUrls==null){
+            if (trackedUrls == null) {
                 trackedUrls = new HashSet<>();
             }
             trackedUrls.add(url);
-            trackedLinks.put(chatId,trackedUrls);
+            trackedLinks.put(chatId, trackedUrls);
             sendMessage("Ссылка добавлена", chatId);
         }
         state = State.CONTINUE;
     }
 
 
-    private void handleUntracked(String url, long chatId){
+    private void handleUntracked(String url, long chatId) {
         Set<String> trackedUrls = trackedLinks.get(chatId);
-        if (trackedUrls.remove(url)){
+        if (trackedUrls.remove(url)) {
             sendMessage("Ссылка " + url + " удалена", chatId);
-        }
-        else{
+        } else {
             sendMessage("Такой ссылки нет", chatId);
         }
         state = State.CONTINUE;
     }
 
-    private void sendMessage(String text, long chatId){
-        telegramBot.execute(new SendMessage(chatId,text));
+    private void sendMessage(String text, long chatId) {
+        telegramBot.execute(new SendMessage(chatId, text));
     }
 
 
     boolean isValidURL(String url) {
         try {
             URI uri = new URI(url);
-            if (uri.getScheme() == null) {
-                return false;  // URLs must have a scheme
-            }
-            return true;
+            return uri.getScheme() != null;  // URLs must have a scheme
         } catch (URISyntaxException | IllegalArgumentException e) {
             return false;
         }
