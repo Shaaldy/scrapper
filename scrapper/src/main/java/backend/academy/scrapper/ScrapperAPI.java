@@ -1,7 +1,10 @@
-package backend.academy.scrapper.api;
+package backend.academy.scrapper;
 
 
-import backend.academy.scrapper.TrackerService;
+import backend.academy.scrapper.api.AddLinkRequest;
+import backend.academy.scrapper.api.ApiErrorResponse;
+import backend.academy.scrapper.api.ListLinksResponse;
+import backend.academy.scrapper.api.RemoveLinkRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@RestController()
 public class ScrapperAPI {
 
     TrackerService trackerService;
@@ -22,13 +25,13 @@ public class ScrapperAPI {
     }
 
     @PostMapping("/tg-chat/{id}")
-    public ResponseEntity<ApiErrorResponse> registrationTgChat(@PathVariable Long id) {
+    public ResponseEntity<String> registrationTgChat(@PathVariable Long id) {
         if (trackerService.addChatId(id)) {
             ApiErrorResponse apiErrorResponse = new ApiErrorResponse("success", "200", "-", "-", null);
-            return new ResponseEntity<>(apiErrorResponse, HttpStatus.OK);
+            return new ResponseEntity<>("ok", HttpStatus.OK);
         }
         ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
-        return new ResponseEntity<>(apiErrorResponse, HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>("ne_ok", HttpStatus.NOT_FOUND);
     }
 
     @DeleteMapping("/tg-chat/{id}")

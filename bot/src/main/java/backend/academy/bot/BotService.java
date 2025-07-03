@@ -11,7 +11,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 
 enum State {START, TRACKED, UNTRACKED, CONTINUE}
@@ -19,14 +25,17 @@ enum State {START, TRACKED, UNTRACKED, CONTINUE}
 @Service
 public class BotService {
 
+    private final String resourceUrl = "http://localhost:8080";
     TelegramBot telegramBot;
     State state;
+    RestTemplate restTemplate;
     Map<Long, Set<String>> trackedLinks = new HashMap<>();
 
     @Autowired
     public BotService(BotConfig botConfig) {
         this.telegramBot = new TelegramBot(botConfig.telegramToken());
         this.state = State.START;
+        this.restTemplate = botConfig.restTemplate();
         telegramBot.setUpdatesListener(updates -> {
             for (Update update : updates) {
                 handleUpdate(update);
@@ -41,10 +50,22 @@ public class BotService {
         String text = update.message().text();
         if (state == State.START) {
             if (text.equals("/start")) {
-                sendMessage("Добро пожаловать, регистрация пройдена", chatId);
-                state = State.CONTINUE;
+                String url = resourceUrl + "/tg-chat/";
+                Long obj = chatId;
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Long> entity = new HttpEntity<>(obj, headers);
+
+                ResponseEntity<Long> response = restTemplate.exchange(url, HttpMethod.POST, entity, Long.class);
+
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    sendMessage("Вы успешно зарегестрированы", chatId);
+                    state = State.CONTINUE;
+                } else {
+                    sendMessage("Регистрация не удалась из-за сбоев работы", chatId);
+                }
             } else {
-                sendMessage("Вы не зарегестрированы", chatId);
+                sendMessage("Вы не зарегестрированы, напишите /start", chatId);
             }
         } else if (state == State.CONTINUE) {
             switch (text) {
