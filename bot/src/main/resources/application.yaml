@@ -1,5 +1,11 @@
 app:
   telegram-token: ${TELEGRAM_TOKEN} # env variable
+  scrapperApiUrl: http://localhost:8081/api/scrapper
+  botApiUrl: http://localhost:8080/api/bot
+
+scrapper:
+  api:
+    url: http://localhost:8081/api/scrapper
 
 spring:
   application:

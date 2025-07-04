@@ -3,6 +3,8 @@ app:
   stackoverflow:
     key: ${SO_TOKEN_KEY}
     access-token: ${SO_ACCESS_TOKEN}
+  scrapperApiUrl: http://localhost:8081/api/scrapper  # URL для API Scrapper
+  botApiUrl: http://localhost:8080/api/bot  # URL для API бота
 
 spring:
   application:
