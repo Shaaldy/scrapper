@@ -1,10 +1,7 @@
 package backend.academy.scrapper;
 
 
-import backend.academy.scrapper.api.AddLinkRequest;
-import backend.academy.scrapper.api.ApiErrorResponse;
-import backend.academy.scrapper.api.ListLinksResponse;
-import backend.academy.scrapper.api.RemoveLinkRequest;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +9,12 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController()
+@RequestMapping("api/scrapper")
 public class ScrapperAPI {
 
     TrackerService trackerService;
@@ -24,14 +24,22 @@ public class ScrapperAPI {
         this.trackerService = trackerService;
     }
 
+    /**
+     * Регистрирует новый Telegram-чат для использования сервиса.
+     *
+     * @param id ID Telegram-чата, передается как путь переменной.
+     * @return Подтверждение регистрации или сообщение об ошибке, если чат уже зарегистрирован.
+     */
     @PostMapping("/tg-chat/{id}")
-    public ResponseEntity<String> registrationTgChat(@PathVariable Long id) {
-        if (trackerService.addChatId(id)) {
-            ApiErrorResponse apiErrorResponse = new ApiErrorResponse("success", "200", "-", "-", null);
-            return new ResponseEntity<>("ok", HttpStatus.OK);
+    public ResponseEntity<?> registerChat(@PathVariable Long id) {
+        if (id == null || id <= 0) {
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("Некорректные параметры запроса", "400", "IllegalArgumentException", "ID чата должен быть положительным числом", null));
         }
-        ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
-        return new ResponseEntity<>("ne_ok", HttpStatus.NOT_FOUND);
+        boolean success = trackerService.addChatId(id);
+        if (!success) {
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("Чат уже зарегистрирован", "400", "ChatAlreadyExistsException", "Чат с таким ID уже существует", null));
+        }
+        return ResponseEntity.ok("Чат зарегистрирован.");
     }
 
     @DeleteMapping("/tg-chat/{id}")
@@ -45,12 +53,9 @@ public class ScrapperAPI {
     }
 
     @GetMapping("/links")
-    public ResponseEntity<ListLinksResponse> getLinks(@PathVariable Long id) {
+    public ResponseEntity<?> getLinks(@RequestHeader("Tg-chat-id") Long id) {
         ListLinksResponse setLinks = trackerService.getLinks(id);
-        if (setLinks.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        return new ResponseEntity<>(setLinks, HttpStatus.OK);
+        return ResponseEntity.ok(Map.of("links", setLinks.getLinks(), "size", setLinks.getSize()));
     }
 
     @PostMapping("/links")

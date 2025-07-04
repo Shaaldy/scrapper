@@ -8,13 +8,14 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -25,16 +26,16 @@ enum State {START, TRACKED, UNTRACKED, CONTINUE}
 @Service
 public class BotService {
 
-    private final String resourceUrl = "http://localhost:8080";
     TelegramBot telegramBot;
-    State state;
     RestTemplate restTemplate;
     Map<Long, Set<String>> trackedLinks = new HashMap<>();
+    Map<Long, State> userStates = new HashMap<>();
+    @Value("${app.scrapperApiUrl}")
+    private String scrapperApiUrl;
 
     @Autowired
     public BotService(BotConfig botConfig) {
         this.telegramBot = new TelegramBot(botConfig.telegramToken());
-        this.state = State.START;
         this.restTemplate = botConfig.restTemplate();
         telegramBot.setUpdatesListener(updates -> {
             for (Update update : updates) {
@@ -45,40 +46,25 @@ public class BotService {
     }
 
     protected void handleUpdate(Update update) {
-        System.out.println("Текущее состояние: " + state);
+
         long chatId = update.message().chat().id();
         String text = update.message().text();
+        State state = userStates.getOrDefault(chatId, State.START);
+        System.out.println("Текущее состояние: " + state);
         if (state == State.START) {
-            if (text.equals("/start")) {
-                String url = resourceUrl + "/tg-chat/";
-                Long obj = chatId;
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                HttpEntity<Long> entity = new HttpEntity<>(obj, headers);
-
-                ResponseEntity<Long> response = restTemplate.exchange(url, HttpMethod.POST, entity, Long.class);
-
-                if (response.getStatusCode().is2xxSuccessful()) {
-                    sendMessage("Вы успешно зарегестрированы", chatId);
-                    state = State.CONTINUE;
-                } else {
-                    sendMessage("Регистрация не удалась из-за сбоев работы", chatId);
-                }
-            } else {
-                sendMessage("Вы не зарегестрированы, напишите /start", chatId);
-            }
+            registerChat(chatId);
         } else if (state == State.CONTINUE) {
             switch (text) {
                 case "/start" -> sendMessage("Вы уже зарегестрированы", chatId);
                 case "/help" -> sendMessage("Команда помощи", chatId);
-                case "/list" -> sendMessage("Пока не реализовано", chatId);
+                case "/list" -> getList(chatId);
                 case "/track" -> {
                     sendMessage("Укажите ссылку для отслеживания: ", chatId);
-                    state = State.TRACKED;
+                    userStates.put(chatId, State.TRACKED);
                 }
                 case "/untrack" -> {
                     sendMessage("Укажите ссылку, которую нужно удалить: ", chatId);
-                    state = State.UNTRACKED;
+                    userStates.put(chatId, State.UNTRACKED);
                 }
             }
         } else if (state == State.TRACKED) {
@@ -98,7 +84,7 @@ public class BotService {
             trackedLinks.put(chatId, trackedUrls);
             sendMessage("Ссылка добавлена", chatId);
         }
-        state = State.CONTINUE;
+        userStates.put(chatId, State.CONTINUE);
     }
 
 
@@ -109,7 +95,7 @@ public class BotService {
         } else {
             sendMessage("Такой ссылки нет", chatId);
         }
-        state = State.CONTINUE;
+        userStates.put(chatId, State.CONTINUE);
     }
 
     private void sendMessage(String text, long chatId) {
@@ -123,6 +109,46 @@ public class BotService {
             return uri.getScheme() != null;  // URLs must have a scheme
         } catch (URISyntaxException | IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    /**
+     * Регистрирует пользователя в системе Scrapper для возможности отслеживания ссылок.
+     * Отправляет запрос на создание записи о чате.
+     *
+     * @param chatId идентификатор чата пользователя в Telegram
+     */
+    private void registerChat(long chatId) {
+        try {
+            ResponseEntity<Void> response = restTemplate.postForEntity(scrapperApiUrl + "/tg-chat/{chatId}", null, Void.class, chatId);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                userStates.put(chatId, State.CONTINUE);
+                sendMessage("Регистрация успешная", chatId);
+            } else {
+                sendMessage("Регистрация неудачная", chatId);
+            }
+
+        } catch (Exception e) {
+            sendMessage("Ошибка при регистрации. Возможно, вы уже зарегистрированы. Если нет, попробуйте позже. ", chatId);
+        }
+    }
+
+    private void getList(long chatId) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Tg-chat-id", String.valueOf(chatId));
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.GET, entity, Map.class);
+            Map objectsMap = response.getBody();
+            List<String> links = (List<String>) objectsMap.get("links");
+            if (links != null && !links.isEmpty()) {
+                sendMessage("Отслеживаемые ссылки: " + String.join("\n", links), chatId);
+            } else {
+                sendMessage("Нет отслеживаемых ссылок", chatId);
+            }
+        } catch (Exception e) {
+            sendMessage("Ошибка в работе БД", chatId);
         }
     }
 }

@@ -1,19 +1,15 @@
 package backend.academy.scrapper;
 
-import backend.academy.scrapper.api.AddLinkRequest;
-import backend.academy.scrapper.api.LinkResponse;
-import backend.academy.scrapper.api.ListLinksResponse;
-import backend.academy.scrapper.api.RemoveLinkRequest;
-import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.stereotype.Service;
 
 @Service
 public class TrackerService {
     Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
-    Set<Long> chatIds;
+    Set<Long> chatIds = new HashSet<>();
 
     public boolean addChatId(Long chatId) {
         chatIds.add(chatId);
@@ -25,19 +21,17 @@ public class TrackerService {
     }
 
     public ListLinksResponse getLinks(Long chatId) {
-        return trackedLinks.get(chatId);
+        return trackedLinks.getOrDefault(chatId, new ListLinksResponse());
     }
 
     public boolean addLink(Long chatId, AddLinkRequest link) {
         ListLinksResponse response = trackedLinks.get(chatId);
-        LinkResponse linkResponse = new LinkResponse(chatId, link.link(), link.filters(), link.tags());
+        LinkResponse linkResponse = new LinkResponse(chatId, link.link());
         if (response == null) {
-            Set<LinkResponse> lR =  new HashSet<>();
+            Set<LinkResponse> lR = new HashSet<>();
             lR.add(linkResponse);
-            response = new ListLinksResponse(lR);
             return true;
         }
-
         return response.addLink(linkResponse);
 
     }
