@@ -1,4 +1,4 @@
-package backend.academy.scrapper.api;
+package backend.academy.scrapper;
 
 import java.util.ArrayList;
 
