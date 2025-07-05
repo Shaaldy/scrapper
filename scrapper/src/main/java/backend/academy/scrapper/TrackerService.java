@@ -43,6 +43,10 @@ public class TrackerService {
 
     public boolean removeLink(Long chatId, RemoveLinkRequest removeLinkRequest) {
         ListLinksResponse links = trackedLinks.get(chatId);
-        return links.deleteLink(removeLinkRequest.link());
+        if (links.deleteLink(removeLinkRequest.link())){
+            trackedLinks.put(chatId, links);
+            return true;
+        }
+        return false;
     }
 }

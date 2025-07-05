@@ -26,10 +26,10 @@ public class ListLinksResponse {
         for (LinkResponse link : links) {
             if (link.url().equals(linked)) {
                 links.remove(link);
-                size--;
                 res = true;
             }
         }
+        this.size = links.size();
         return res;
     }
 
