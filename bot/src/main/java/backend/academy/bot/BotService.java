@@ -55,9 +55,8 @@ public class BotService {
         State state = userStates.getOrDefault(chatId, State.START);
         System.out.println("Текущее состояние: " + state);
         if (state == State.START) {
-            if (text.equals("/start"))
-                registerChat(chatId);
-            else{
+            if (text.equals("/start")) registerChat(chatId);
+            else {
                 sendMessage("Вы еще не зарегестрированы", chatId);
             }
         } else if (state == State.CONTINUE) {
@@ -128,25 +127,22 @@ public class BotService {
      * @param chatId идентификатор чата пользователя в Telegram
      */
     private void deleteChat(long chatId) {
-        try{
+        try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Tg-chat-id", String.valueOf(chatId));
             HttpEntity<String> entity = new HttpEntity<>(headers);
             ApiErrorResponse apiErrorResponse = restTemplate.exchange(scrapperApiUrl + "/tg-chat/{chatId}", HttpMethod.DELETE, entity, ApiErrorResponse.class, chatId).getBody();
             assert apiErrorResponse != null;
             logger.info(apiErrorResponse.toString());
-            if (apiErrorResponse.code().equals("200")){
+            if (apiErrorResponse.code().equals("200")) {
                 sendMessage("ID пользователя удалено из хранилища, для начала диалога напишите /start", chatId);
-            }
-            else{
+            } else {
                 sendMessage("Не удалось удалить пользователя, возможно он уже удален", chatId);
             }
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             sendMessage("Ошибка в работе БД", chatId);
             logger.error(e.getMessage());
-        }
-        finally {
+        } finally {
             userStates.remove(chatId);
         }
     }
@@ -182,16 +178,16 @@ public class BotService {
      * Обработка ссылки, которую пользователь отправил в чат
      * Отправление запроса на добавление ссылки в хранилище (в будущем БД)
      *
-     * @param url отслеживаемая ссылка
+     * @param url    отслеживаемая ссылка
      * @param chatId идентификатор чата пользователя в Telegram
-     * */
+     */
     private void handleTracked(String url, long chatId) {
         if (isInvalidURL(url)) {
             logger.error("Некорректная ссылка {}", url);
             sendMessage("Введите пожалуйста ссылка", chatId);
             return;
         }
-        try{
+        try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Tg-chat-id", String.valueOf(chatId));
             HttpEntity<String> entity = new HttpEntity<>(url, headers);
@@ -199,8 +195,7 @@ public class BotService {
             userStates.put(chatId, State.CONTINUE);
             sendMessage("Ссылка успешно добавлена", chatId);
             logger.info("Ссылка {} для пользователя {} успешно добавлена", url, chatId);
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             sendMessage("Ошибка в работде БД", chatId);
             logger.error("Ошибка в системе:\n Ссылка {} пользователя {}\n{}", url, chatId, e.getMessage());
         }
@@ -210,7 +205,7 @@ public class BotService {
      * Обработка удаления ссылки из отслеживаемых
      * Отправление запроса на удаление ссылки из хранилища
      *
-     * @param url отслеживаемая ссылка
+     * @param url    отслеживаемая ссылка
      * @param chatId идентификатор чата пользователя в Telegram
      */
     private void handleUntracked(String url, long chatId) {
@@ -219,7 +214,7 @@ public class BotService {
             sendMessage("Введите пожалуйста ссылка", chatId);
             return;
         }
-        try{
+        try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Tg-chat-id", String.valueOf(chatId));
             HttpEntity<String> entity = new HttpEntity<>(url, headers);
@@ -229,12 +224,10 @@ public class BotService {
             if (apiErrorResponse.code().equals("200")) {
                 userStates.put(chatId, State.CONTINUE);
                 sendMessage("Ссылка теперь не отслеживается", chatId);
-            }
-            else{
+            } else {
                 sendMessage("Такой ссылки нет", chatId);
             }
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             sendMessage("Ошибка в работе БД", chatId);
             logger.error(e.getMessage());
         }

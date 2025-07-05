@@ -47,17 +47,15 @@ public class ScrapperAPI {
 
     @DeleteMapping("/tg-chat/{id}")
     public ResponseEntity<ApiErrorResponse> deleteTgChat(@RequestHeader("Tg-chat-id") Long id) {
-        try{
+        try {
             ApiErrorResponse apiErrorResponse;
             if (trackerService.removeChatId(id)) {
                 apiErrorResponse = new ApiErrorResponse("ID чата удален", "200", "-", "-", null);
-            }
-            else{
+            } else {
                 apiErrorResponse = new ApiErrorResponse("Не удалось удалить", "400", "-", "-", null);
             }
             return ResponseEntity.ok(apiErrorResponse);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             return ResponseEntity.badRequest().body(new ApiErrorResponse("fall", "400", "Exception", ex.getMessage(), null));
         }
     }
@@ -71,11 +69,10 @@ public class ScrapperAPI {
 
     @PostMapping("/links")
     public ResponseEntity<?> addLink(@RequestHeader("Tg-chat-id") Long id, @RequestBody String addLinkRequest) {
-        try{
+        try {
             trackerService.addLink(id, new AddLinkRequest(addLinkRequest));
             return ResponseEntity.ok("Ссылка добавлена");
-        }
-        catch(Exception e) {
+        } catch (Exception e) {
             ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
             return ResponseEntity.badRequest().body(apiErrorResponse);
         }
