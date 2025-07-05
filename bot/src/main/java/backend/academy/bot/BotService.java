@@ -8,10 +8,8 @@ import com.pengrad.telegrambot.request.SendMessage;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,12 +89,12 @@ public class BotService {
     }
 
 
-    boolean isValidURL(String url) {
+    private boolean isInvalidURL(String url) {
         try {
             URI uri = new URI(url);
-            return uri.getScheme() != null;  // URLs must have a scheme
+            return uri.getScheme() == null;  // URLs must have a scheme
         } catch (URISyntaxException | IllegalArgumentException e) {
-            return false;
+            return true;
         }
     }
 
@@ -112,16 +110,23 @@ public class BotService {
             if (response.getStatusCode().is2xxSuccessful()) {
                 userStates.put(chatId, State.CONTINUE);
                 sendMessage("Регистрация успешная", chatId);
+                logger.info("Пользователь с Id {} зарегестрирован", chatId);
             } else {
                 sendMessage("Регистрация неудачная", chatId);
             }
 
         } catch (Exception e) {
             sendMessage("Ошибка при регистрации. Возможно, вы уже зарегистрированы. Если нет, попробуйте позже. ", chatId);
+            logger.error(e.getMessage());
         }
     }
 
-
+    /**
+     * Удаляет Id пользователя в системе Scrapper.
+     * Отправляет запрос на удаление записи о чате.
+     *
+     * @param chatId идентификатор чата пользователя в Telegram
+     */
     private void deleteChat(long chatId) {
         try{
             HttpHeaders headers = new HttpHeaders();
@@ -157,12 +162,12 @@ public class BotService {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Tg-chat-id", String.valueOf(chatId));
             HttpEntity<String> entity = new HttpEntity<>(headers);
-
             ResponseEntity<Map> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.GET, entity, Map.class);
             Map objectsMap = response.getBody();
             List<String> links = (List<String>) objectsMap.get("links");
+            logger.info("Запрос на получение ссылок удачен для пользователя с ID {}", chatId);
             if (links != null && !links.isEmpty()) {
-                sendMessage("Отслеживаемые ссылки: " + String.join("\n", links), chatId);
+                sendMessage("Отслеживаемые ссылки:\n" + String.join("\n", links), chatId);
             } else {
                 sendMessage("Нет отслеживаемых ссылок", chatId);
             }
@@ -181,7 +186,8 @@ public class BotService {
      * @param chatId идентификатор чата пользователя в Telegram
      * */
     private void handleTracked(String url, long chatId) {
-        if (!isValidURL(url)) {
+        if (isInvalidURL(url)) {
+            logger.error("Некорректная ссылка {}", url);
             sendMessage("Введите пожалуйста ссылка", chatId);
             return;
         }
@@ -192,10 +198,11 @@ public class BotService {
             restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.POST, entity, Void.class);
             userStates.put(chatId, State.CONTINUE);
             sendMessage("Ссылка успешно добавлена", chatId);
+            logger.info("Ссылка {} для пользователя {} успешно добавлена", url, chatId);
         }
         catch(Exception e){
             sendMessage("Ошибка в работде БД", chatId);
-            logger.error(e.getMessage());
+            logger.error("Ошибка в системе:\n Ссылка {} пользователя {}\n{}", url, chatId, e.getMessage());
         }
     }
 
@@ -207,7 +214,8 @@ public class BotService {
      * @param chatId идентификатор чата пользователя в Telegram
      */
     private void handleUntracked(String url, long chatId) {
-        if (!isValidURL(url)) {
+        if (isInvalidURL(url)) {
+            logger.error("Некорректная ссылка {}", url);
             sendMessage("Введите пожалуйста ссылка", chatId);
             return;
         }
