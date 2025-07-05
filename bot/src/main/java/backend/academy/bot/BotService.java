@@ -46,13 +46,19 @@ public class BotService {
     }
 
     protected void handleUpdate(Update update) {
-
+        if (update.message() == null) {
+            return;
+        }
         long chatId = update.message().chat().id();
         String text = update.message().text();
         State state = userStates.getOrDefault(chatId, State.START);
         System.out.println("Текущее состояние: " + state);
         if (state == State.START) {
-            registerChat(chatId);
+            if (text.equals("/start"))
+                registerChat(chatId);
+            else{
+                sendMessage("Вы еще не зарегестрированы", chatId);
+            }
         } else if (state == State.CONTINUE) {
             switch (text) {
                 case "/start" -> sendMessage("Вы уже зарегестрированы", chatId);
@@ -66,6 +72,7 @@ public class BotService {
                     sendMessage("Укажите ссылку, которую нужно удалить: ", chatId);
                     userStates.put(chatId, State.UNTRACKED);
                 }
+                default -> sendMessage("Данная команда не поддерживается, список команда: /help", chatId);
             }
         } else if (state == State.TRACKED) {
             handleTracked(text, chatId);
@@ -74,18 +81,6 @@ public class BotService {
         }
     }
 
-    private void handleTracked(String url, long chatId) {
-        if (isValidURL(url)) {
-            Set<String> trackedUrls = trackedLinks.get(chatId);
-            if (trackedUrls == null) {
-                trackedUrls = new HashSet<>();
-            }
-            trackedUrls.add(url);
-            trackedLinks.put(chatId, trackedUrls);
-            sendMessage("Ссылка добавлена", chatId);
-        }
-        userStates.put(chatId, State.CONTINUE);
-    }
 
 
     private void handleUntracked(String url, long chatId) {
@@ -133,6 +128,12 @@ public class BotService {
         }
     }
 
+    /**
+     * Выдает пользователю список ссылок, которые он отслеживает
+     * Отправляет запрос на выдачу ссылок
+     *
+     * @param chatId идентификатор чата пользователя в Telegram
+     */
     private void getList(long chatId) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -150,6 +151,34 @@ public class BotService {
         } catch (Exception e) {
             sendMessage("Ошибка в работе БД", chatId);
         }
+    }
+
+
+
+    private void handleTracked(String url, long chatId) {
+        if (!isValidURL(url)) {
+            sendMessage("Некорректная ссылка, введите заново", chatId);
+        }
+        else{
+
+            try{
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("Tg-chat-id", String.valueOf(chatId));
+                HttpEntity<String> entity = new HttpEntity<>(url, headers);
+                ResponseEntity<Void> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.POST, entity, Void.class);
+
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    userStates.put(chatId, State.CONTINUE);
+                    sendMessage("Ссылка успешно добавлена", chatId);
+                } else {
+                    sendMessage("Неудалось добавить, возможно уже она есть в списке", chatId);
+                }
+            }
+            catch(Exception e){
+                sendMessage("Ошибка в работде БД", chatId);
+            }
+        }
+
     }
 }
 

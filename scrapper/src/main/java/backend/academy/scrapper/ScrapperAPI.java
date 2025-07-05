@@ -2,6 +2,11 @@ package backend.academy.scrapper;
 
 
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import io.swagger.v3.oas.annotations.headers.Header;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController()
 @RequestMapping("api/scrapper")
 public class ScrapperAPI {
-
+    Logger logger = Logger.getLogger(ScrapperAPI.class.getName());
     TrackerService trackerService;
 
     @Autowired
@@ -54,18 +60,21 @@ public class ScrapperAPI {
 
     @GetMapping("/links")
     public ResponseEntity<?> getLinks(@RequestHeader("Tg-chat-id") Long id) {
-        ListLinksResponse setLinks = trackerService.getLinks(id);
-        return ResponseEntity.ok(Map.of("links", setLinks.getLinks(), "size", setLinks.getSize()));
+        Set<LinkResponse> setLinks = trackerService.getLinks(id).getLinks();
+        Set<String> urls = setLinks.stream().map(LinkResponse::url).collect(Collectors.toSet());
+        return ResponseEntity.ok(Map.of("links", urls, "size", setLinks.size()));
     }
 
     @PostMapping("/links")
-    public ResponseEntity<ApiErrorResponse> addLink(@PathVariable Long id, AddLinkRequest addLinkRequest) {
-        if (trackerService.addLink(id, addLinkRequest)) {
-            ApiErrorResponse apiErrorResponse = new ApiErrorResponse("success", "200", "-", "-", null);
-            return new ResponseEntity<>(apiErrorResponse, HttpStatus.OK);
+    public ResponseEntity<?> addLink(@RequestHeader("Tg-chat-id") Long id, @RequestBody String addLinkRequest) {
+        try{
+            trackerService.addLink(id, new AddLinkRequest(addLinkRequest));
+            return ResponseEntity.ok("Ссылка добавлена");
         }
-        ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
-        return new ResponseEntity<>(apiErrorResponse, HttpStatus.NOT_FOUND);
+        catch(Exception e) {
+            ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
+            return ResponseEntity.badRequest().body(apiErrorResponse);
+        }
     }
 
     @DeleteMapping("/links")

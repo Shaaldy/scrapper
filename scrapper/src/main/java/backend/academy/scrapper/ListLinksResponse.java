@@ -17,14 +17,8 @@ public class ListLinksResponse {
         this.size = 0;
     }
 
-    public boolean addLink(LinkResponse link) {
-
+    public void addLink(LinkResponse link) {
         this.links.add(link);
-        if (links.size() > this.size) {
-            size++;
-            return true;
-        }
-        return false;
     }
 
     public boolean deleteLink(String linked) {

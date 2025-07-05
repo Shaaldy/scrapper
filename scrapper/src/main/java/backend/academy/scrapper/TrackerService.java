@@ -4,10 +4,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TrackerService {
+    Logger logger = Logger.getLogger(TrackerService.class.getName());
     Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
     Set<Long> chatIds = new HashSet<>();
 
@@ -21,19 +24,21 @@ public class TrackerService {
     }
 
     public ListLinksResponse getLinks(Long chatId) {
+        logger.log(Level.INFO, "Getting links for " + chatId + "\n " + trackedLinks.toString());
         return trackedLinks.getOrDefault(chatId, new ListLinksResponse());
     }
 
-    public boolean addLink(Long chatId, AddLinkRequest link) {
+    public void addLink(Long chatId, AddLinkRequest link) {
         ListLinksResponse response = trackedLinks.get(chatId);
         LinkResponse linkResponse = new LinkResponse(chatId, link.link());
         if (response == null) {
             Set<LinkResponse> lR = new HashSet<>();
             lR.add(linkResponse);
-            return true;
+            trackedLinks.put(chatId, new ListLinksResponse(lR));
+            return;
         }
-        return response.addLink(linkResponse);
-
+        response.addLink(linkResponse);
+        trackedLinks.put(chatId, response);
     }
 
     public boolean removeLink(Long chatId, RemoveLinkRequest removeLinkRequest) {
