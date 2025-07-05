@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import io.swagger.v3.oas.annotations.headers.Header;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,13 +48,20 @@ public class ScrapperAPI {
     }
 
     @DeleteMapping("/tg-chat/{id}")
-    public ResponseEntity<ApiErrorResponse> deleteTgChat(@PathVariable Long id) {
-        if (trackerService.removeChatId(id)) {
-            ApiErrorResponse apiErrorResponse = new ApiErrorResponse("success", "200", "-", "-", null);
-            return new ResponseEntity<>(apiErrorResponse, HttpStatus.OK);
+    public ResponseEntity<ApiErrorResponse> deleteTgChat(@RequestHeader("Tg-chat-id") Long id) {
+        try{
+            ApiErrorResponse apiErrorResponse;
+            if (trackerService.removeChatId(id)) {
+                apiErrorResponse = new ApiErrorResponse("ID чата удален", "200", "-", "-", null);
+            }
+            else{
+                apiErrorResponse = new ApiErrorResponse("Не удалось удалить", "400", "-", "-", null);
+            }
+            return ResponseEntity.ok(apiErrorResponse);
         }
-        ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
-        return new ResponseEntity<>(apiErrorResponse, HttpStatus.NOT_FOUND);
+        catch (Exception ex) {
+            return ResponseEntity.badRequest().body(new ApiErrorResponse("fall", "400", "Exception", ex.getMessage(), null));
+        }
     }
 
     @GetMapping("/links")
@@ -78,12 +84,12 @@ public class ScrapperAPI {
     }
 
     @DeleteMapping("/links")
-    public ResponseEntity<ApiErrorResponse> deleteLink(@PathVariable Long id, RemoveLinkRequest removeLinkRequest) {
-        if (trackerService.removeLink(id, removeLinkRequest)) {
+    public ResponseEntity<ApiErrorResponse> deleteLink(@RequestHeader("Tg-chat-id") Long id, @RequestBody String removeLinkRequest) {
+        if (trackerService.removeLink(id, new RemoveLinkRequest(removeLinkRequest))) {
             ApiErrorResponse apiErrorResponse = new ApiErrorResponse("success", "200", "-", "-", null);
-            return new ResponseEntity<>(apiErrorResponse, HttpStatus.OK);
+            return ResponseEntity.ok(apiErrorResponse);
         }
-        ApiErrorResponse apiErrorResponse = new ApiErrorResponse("fall", "400", "-", "-", null);
-        return new ResponseEntity<>(apiErrorResponse, HttpStatus.NOT_FOUND);
+        ApiErrorResponse apiErrorResponse = new ApiErrorResponse("У пользователя с таким ID нет этой ссылки", "400", "-", "-", null);
+        return ResponseEntity.ok(apiErrorResponse);
     }
 }

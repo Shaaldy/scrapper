@@ -1,5 +1,6 @@
 package backend.academy.bot;
 
+import backend.academy.api.ApiErrorResponse;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
@@ -11,6 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -26,9 +29,9 @@ enum State {START, TRACKED, UNTRACKED, CONTINUE}
 @Service
 public class BotService {
 
+    Logger logger = LoggerFactory.getLogger(BotService.class);
     TelegramBot telegramBot;
     RestTemplate restTemplate;
-    Map<Long, Set<String>> trackedLinks = new HashMap<>();
     Map<Long, State> userStates = new HashMap<>();
     @Value("${app.scrapperApiUrl}")
     private String scrapperApiUrl;
@@ -72,6 +75,7 @@ public class BotService {
                     sendMessage("Укажите ссылку, которую нужно удалить: ", chatId);
                     userStates.put(chatId, State.UNTRACKED);
                 }
+                case "/delete" -> deleteChat(chatId);
                 default -> sendMessage("Данная команда не поддерживается, список команда: /help", chatId);
             }
         } else if (state == State.TRACKED) {
@@ -81,17 +85,6 @@ public class BotService {
         }
     }
 
-
-
-    private void handleUntracked(String url, long chatId) {
-        Set<String> trackedUrls = trackedLinks.get(chatId);
-        if (trackedUrls.remove(url)) {
-            sendMessage("Ссылка " + url + " удалена", chatId);
-        } else {
-            sendMessage("Такой ссылки нет", chatId);
-        }
-        userStates.put(chatId, State.CONTINUE);
-    }
 
     private void sendMessage(String text, long chatId) {
         telegramBot.execute(new SendMessage(chatId, text));
@@ -128,6 +121,31 @@ public class BotService {
         }
     }
 
+
+    private void deleteChat(long chatId) {
+        try{
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Tg-chat-id", String.valueOf(chatId));
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            ApiErrorResponse apiErrorResponse = restTemplate.exchange(scrapperApiUrl + "/tg-chat/{chatId}", HttpMethod.DELETE, entity, ApiErrorResponse.class, chatId).getBody();
+            assert apiErrorResponse != null;
+            logger.info(apiErrorResponse.toString());
+            if (apiErrorResponse.code().equals("200")){
+                sendMessage("ID пользователя удалено из хранилища, для начала диалога напишите /start", chatId);
+            }
+            else{
+                sendMessage("Не удалось удалить пользователя, возможно он уже удален", chatId);
+            }
+        }
+        catch (Exception e){
+            sendMessage("Ошибка в работе БД", chatId);
+            logger.error(e.getMessage());
+        }
+        finally {
+            userStates.remove(chatId);
+        }
+    }
+
     /**
      * Выдает пользователю список ссылок, которые он отслеживает
      * Отправляет запрос на выдачу ссылок
@@ -150,36 +168,70 @@ public class BotService {
             }
         } catch (Exception e) {
             sendMessage("Ошибка в работе БД", chatId);
+            logger.error(e.getMessage());
         }
     }
 
 
-
+    /**
+     * Обработка ссылки, которую пользователь отправил в чат
+     * Отправление запроса на добавление ссылки в хранилище (в будущем БД)
+     *
+     * @param url отслеживаемая ссылка
+     * @param chatId идентификатор чата пользователя в Telegram
+     * */
     private void handleTracked(String url, long chatId) {
         if (!isValidURL(url)) {
-            sendMessage("Некорректная ссылка, введите заново", chatId);
+            sendMessage("Введите пожалуйста ссылка", chatId);
+            return;
         }
-        else{
-
-            try{
-                HttpHeaders headers = new HttpHeaders();
-                headers.set("Tg-chat-id", String.valueOf(chatId));
-                HttpEntity<String> entity = new HttpEntity<>(url, headers);
-                ResponseEntity<Void> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.POST, entity, Void.class);
-
-                if (response.getStatusCode().is2xxSuccessful()) {
-                    userStates.put(chatId, State.CONTINUE);
-                    sendMessage("Ссылка успешно добавлена", chatId);
-                } else {
-                    sendMessage("Неудалось добавить, возможно уже она есть в списке", chatId);
-                }
-            }
-            catch(Exception e){
-                sendMessage("Ошибка в работде БД", chatId);
-            }
+        try{
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Tg-chat-id", String.valueOf(chatId));
+            HttpEntity<String> entity = new HttpEntity<>(url, headers);
+            restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.POST, entity, Void.class);
+            userStates.put(chatId, State.CONTINUE);
+            sendMessage("Ссылка успешно добавлена", chatId);
         }
-
+        catch(Exception e){
+            sendMessage("Ошибка в работде БД", chatId);
+            logger.error(e.getMessage());
+        }
     }
+
+    /**
+     * Обработка удаления ссылки из отслеживаемых
+     * Отправление запроса на удаление ссылки из хранилища
+     *
+     * @param url отслеживаемая ссылка
+     * @param chatId идентификатор чата пользователя в Telegram
+     */
+    private void handleUntracked(String url, long chatId) {
+        if (!isValidURL(url)) {
+            sendMessage("Введите пожалуйста ссылка", chatId);
+            return;
+        }
+        try{
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Tg-chat-id", String.valueOf(chatId));
+            HttpEntity<String> entity = new HttpEntity<>(url, headers);
+            ResponseEntity<ApiErrorResponse> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.DELETE, entity, ApiErrorResponse.class);
+            ApiErrorResponse apiErrorResponse = response.getBody();
+            logger.info("apiErrorResponse: {}", apiErrorResponse);
+            if (apiErrorResponse.code().equals("200")) {
+                userStates.put(chatId, State.CONTINUE);
+                sendMessage("Ссылка теперь не отслеживается", chatId);
+            }
+            else{
+                sendMessage("Такой ссылки нет", chatId);
+            }
+        }
+        catch(Exception e){
+            sendMessage("Ошибка в работе БД", chatId);
+            logger.error(e.getMessage());
+        }
+    }
+
 }
 
 
