@@ -1,5 +1,6 @@
 package backend.academy.scrapper;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,10 +10,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import static backend.academy.scrapper.TrackerService.ISO_INSTANT;
+
 
 @Service
 class GithubClient {
-
     private final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
     private final Logger logger = LoggerFactory.getLogger(GithubClient.class);
     private final RestTemplate restTemplate;
@@ -30,7 +32,7 @@ class GithubClient {
         return "https://api.github.com/repos/" + info;
     }
 
-    public String isUpdated(String link) {
+    public LocalDateTime updateTime(String link) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "token " + githubToken);
         headers.set("User-Agent", userAgent);
@@ -39,7 +41,7 @@ class GithubClient {
         logger.info(request.getBody().toString());
         Map<String, Object> body = request.getBody();
         logger.info(body.get("updated_at").toString());
-        return body.get("updated_at").toString();
+        return LocalDateTime.parse((String) body.get("updated_at"), ISO_INSTANT);
     }
 
 }
