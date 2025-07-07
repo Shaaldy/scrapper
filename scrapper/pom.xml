@@ -11,6 +11,12 @@
     <artifactId>scrapper</artifactId>
 
     <dependencies>
+        <!-- https://mvnrepository.com/artifact/me.paulschwarz/spring-dotenv -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

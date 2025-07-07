@@ -6,13 +6,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class TrackerService {
     Logger logger = Logger.getLogger(TrackerService.class.getName());
+    GithubClient githubClient;
     Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
     Set<Long> chatIds = new HashSet<>();
+
+    @Autowired
+    public TrackerService(GithubClient githubClient) {
+        this.githubClient = githubClient;
+    }
 
     public boolean addChatId(Long chatId) {
         chatIds.add(chatId);
