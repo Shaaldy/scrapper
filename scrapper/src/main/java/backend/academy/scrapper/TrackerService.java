@@ -7,31 +7,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 @Service
 @EnableScheduling
 public class TrackerService {
-    Logger logger = LoggerFactory.getLogger(TrackerService.class);
     protected static DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
-
+    Logger logger = LoggerFactory.getLogger(TrackerService.class);
     GithubClient githubClient;
     RestTemplate restTemplate;
 
     Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
     Set<Long> chatIds = new HashSet<>();
-    Map<String, Integer> linkCount = new HashMap<>();
+    Map<String, Set<Long>> linkCount = new HashMap<>();
     Map<String, LocalDateTime> lastUpdated = new HashMap<>();
 
     @Autowired
-    public TrackerService(GithubClient githubClient,  RestTemplate restTemplate) {
+    public TrackerService(GithubClient githubClient, RestTemplate restTemplate) {
         this.githubClient = githubClient;
         this.restTemplate = restTemplate;
     }
@@ -44,7 +42,7 @@ public class TrackerService {
     public boolean removeChatId(Long chatId) {
         trackedLinks.remove(chatId);
         for (LinkResponse linkResponse : trackedLinks.get(chatId).links) {
-            deleteFromSet(linkResponse);
+            deleteFromSet(linkResponse, chatId);
         }
         return chatIds.remove(chatId);
     }
@@ -58,11 +56,10 @@ public class TrackerService {
         ListLinksResponse response = trackedLinks.get(chatId);
         String link = addLinkRequest.getLink();
         LinkResponse linkResponse = new LinkResponse(chatId, link);
-        if(linkCount.containsKey(link)) {
-            linkCount.replace(link, linkCount.get(link) + 1);
-        }
-        else{
-            linkCount.put(link, 1);
+        if (linkCount.containsKey(link)) {
+            linkCount.get(link).add(chatId);
+        } else {
+            linkCount.put(link, Set.of(chatId));
         }
         if (response == null) {
             Set<LinkResponse> lR = new HashSet<>();
@@ -79,7 +76,7 @@ public class TrackerService {
         ListLinksResponse links = trackedLinks.get(chatId);
         String link = removeLinkRequest.getLink();
         if (links.deleteLink(link)) {
-            deleteFromSet(removeLinkRequest);
+            deleteFromSet(removeLinkRequest, chatId);
             trackedLinks.put(chatId, links);
             return true;
         }
@@ -87,14 +84,16 @@ public class TrackerService {
     }
 
 
-    private void deleteFromSet(ILinked iLinked){
+    private void deleteFromSet(ILinked iLinked, Long id) {
         String url = iLinked.getLink();
-        if (linkCount.containsKey(url)){
-            if (linkCount.get(url) <= 1){
-                linkCount.remove(url);
+        if (linkCount.containsKey(url)) {
+            for (Long chatId : linkCount.get(url)) {
+                if (chatId.equals(id)) {
+                    linkCount.get(url).remove(chatId);
+                }
             }
-            else{
-                linkCount.replace(url, linkCount.get(url) - 1);
+            if (linkCount.get(url).isEmpty()) {
+                linkCount.remove(url);
             }
         }
     }
