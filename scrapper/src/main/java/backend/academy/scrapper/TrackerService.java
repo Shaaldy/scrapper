@@ -113,8 +113,12 @@ public class TrackerService {
             }
             LocalDateTime time1 = lastUpdated.get(link);
             LocalDateTime time2 = githubClient.updateTime(link);
-            logger.info("Вребя обновления репозитория в БД - {}\n Время обновления репозитория после HTTP-запроса - {}", time1, time2);
-            return time1.isBefore(time2);
+            logger.info("Вребя обновления репозитория {} в БД - {}, Время обновления репозитория после HTTP-запроса - {}", link, time1, time2);
+            if (time1.isBefore(time2)){
+                lastUpdated.put(link, time2);
+                return true;
+            }
+            return false;
         } else if (isStackoverflow(link)) {
             logger.info("Stack overflow пока не поддерживается");
             throw new UnsupportedOperationException("StackOverflow links not supported yet");
@@ -123,7 +127,7 @@ public class TrackerService {
         throw new UnsupportedOperationException("Unsupported link type: " + link);
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 6000)
     private void sendHTTPResponse() {
         try {
             for (String link : linkCount.keySet()) {

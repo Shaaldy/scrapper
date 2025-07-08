@@ -38,9 +38,9 @@ class GithubClient {
         headers.set("User-Agent", userAgent);
         HttpEntity<Map> request = new HttpEntity<>(headers);
         request = restTemplate.exchange(make_url(link), HttpMethod.GET, request, Map.class);
-        logger.info(request.getBody().toString());
+
         Map<String, Object> body = request.getBody();
-        logger.info(body.get("updated_at").toString());
+        logger.info("Последнее обновление {}, {}", link, body.get("updated_at").toString());
         return LocalDateTime.parse((String) body.get("updated_at"), ISO_INSTANT);
     }
 
