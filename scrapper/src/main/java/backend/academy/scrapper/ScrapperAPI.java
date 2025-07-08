@@ -63,7 +63,7 @@ public class ScrapperAPI {
     @GetMapping("/links")
     public ResponseEntity<?> getLinks(@RequestHeader("Tg-chat-id") Long id) {
         Set<LinkResponse> setLinks = trackerService.getLinks(id).getLinks();
-        Set<String> urls = setLinks.stream().map(LinkResponse::url).collect(Collectors.toSet());
+        Set<String> urls = setLinks.stream().map(LinkResponse::getLink).collect(Collectors.toSet());
         return ResponseEntity.ok(Map.of("links", urls, "size", setLinks.size()));
     }
 

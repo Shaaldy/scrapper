@@ -24,7 +24,7 @@ public class ListLinksResponse {
     public boolean deleteLink(String linked) {
         boolean res = false;
         for (LinkResponse link : links) {
-            if (link.url().equals(linked)) {
+            if (link.getLink().equals(linked)) {
                 links.remove(link);
                 res = true;
             }
