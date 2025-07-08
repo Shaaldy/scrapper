@@ -1,7 +1,7 @@
 package backend.academy.scrapper;
 
-import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
+import org.jetbrains.annotations.NotNull;
 
 public record ApiErrorResponse(String description, String code, String exceptionName, String exceptionMessage,
                                ArrayList<String> stackTrace) {

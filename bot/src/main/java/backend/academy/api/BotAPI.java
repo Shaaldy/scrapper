@@ -2,10 +2,11 @@ package backend.academy.api;
 
 
 import backend.academy.bot.BotService;
-import java.util.List;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,8 +22,11 @@ public class BotAPI {
         this.botService = botService;
     }
 
+    /**
+     * @RequestHeader Long id - как я понял это id ответа, как его формировать пока не думал и скорее всего он нужен для журнала, поэтому пока без него но о в наших сердцах
+     */
     @PostMapping("/updates")
-    public ResponseEntity<?> updates(@RequestHeader Long id, @RequestHeader String url, @RequestHeader String description, @RequestHeader List<Long> tgChatIds) {
+    public ResponseEntity<?> updates(@RequestHeader String url, @RequestHeader String description, @RequestBody Set<Long> tgChatIds) {
         for (Long chatId : tgChatIds) {
             if (!botService.sendUpdate(chatId, url)) {
                 ApiErrorResponse apiErrorResponse = new ApiErrorResponse("Не корректные параметры запроса", "400", "IllegalArgumentException", "ID чата должен быть положительным числом", null);

@@ -86,8 +86,7 @@ public class BotService {
         try {
             sendMessage("Репозиторий " + url + " обвновился", chatId);
             return true;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.error("Не удалось отправить сообщение");
             return false;
         }
