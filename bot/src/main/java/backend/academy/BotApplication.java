@@ -1,4 +1,4 @@
-package backend.academy.bot;
+package backend.academy;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

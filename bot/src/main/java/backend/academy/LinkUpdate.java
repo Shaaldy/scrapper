@@ -1,4 +1,4 @@
-package backend.academy.api;
+package backend.academy;
 
 import java.util.List;
 

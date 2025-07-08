@@ -1,6 +1,5 @@
-package backend.academy.bot;
+package backend.academy;
 
-import backend.academy.api.ApiErrorResponse;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;

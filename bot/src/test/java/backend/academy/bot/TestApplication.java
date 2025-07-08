@@ -1,5 +1,6 @@
 package backend.academy.bot;
 
+import backend.academy.BotApplication;
 import org.springframework.boot.SpringApplication;
 
 public class TestApplication {
