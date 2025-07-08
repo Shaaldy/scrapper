@@ -82,6 +82,16 @@ public class BotService {
         }
     }
 
+    public boolean sendUpdate(Long chatId, String url) {
+        try {
+            sendMessage("Репозиторий " + url + " обвновился", chatId);
+            return true;
+        }
+        catch (Exception e) {
+            logger.error("Не удалось отправить сообщение");
+            return false;
+        }
+    }
 
     private void sendMessage(String text, long chatId) {
         telegramBot.execute(new SendMessage(chatId, text));
