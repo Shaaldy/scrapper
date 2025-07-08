@@ -24,3 +24,17 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /swagger-ui
+
+logging:
+  file:
+    name: logs/application.log
+  level:
+    root: INFO
+    com.example: DEBUG
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 100MB
+      file-name-pattern: logs/application-%d{yyyy-MM-dd}.%i.log
+      clean-history-on-start: true
