@@ -7,26 +7,32 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 @Service
 @EnableScheduling
 public class TrackerService {
+
     protected static DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
     Logger logger = LoggerFactory.getLogger(TrackerService.class);
     GithubClient githubClient;
     RestTemplate restTemplate;
-
     Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
     Set<Long> chatIds = new HashSet<>();
     Map<String, Set<Long>> linkCount = new HashMap<>();
     Map<String, LocalDateTime> lastUpdated = new HashMap<>();
+    @Value("http://localhost:8080/api/bot")
+    private String botAPI;
 
     @Autowired
     public TrackerService(GithubClient githubClient, RestTemplate restTemplate) {
@@ -116,18 +122,23 @@ public class TrackerService {
         logger.info("Неверная ссылка");
         throw new UnsupportedOperationException("Unsupported link type: " + link);
     }
-//
-//    @Scheduled(fixedRate = 6000)
-//    private void sendHTTPResponse(Long chatId){
-//        try{
-//            for(Map.Entry<String, Integer> entry : linkCount.entrySet()){}
-//
-//            HttpEntity<Void> httpEntity = new HttpEntity<>(headers);
-//        }
-//        catch (Exception e){
-//
-//        }
-//    }
+
+    @Scheduled(fixedRate = 60000)
+    private void sendHTTPResponse() {
+        try {
+            for (String link : linkCount.keySet()) {
+                if (isUpdated(link)) {
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.set("Url", link);
+                    headers.set("Description", "нет описания, временная затычка");
+                    HttpEntity<Set> httpEntity = new HttpEntity<>(linkCount.get(link), headers);
+                    restTemplate.exchange(botAPI + "/updates", HttpMethod.POST, httpEntity, Void.class);
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
 
     private boolean isGithubLink(String link) {
         return link.startsWith("https://github.com/");
