@@ -1,4 +1,4 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.service;
 
 
 import java.time.LocalDateTime;
@@ -7,6 +7,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import backend.academy.scrapper.api.AddLinkRequest;
+import backend.academy.scrapper.api.ILinked;
+import backend.academy.scrapper.api.LinkResponse;
+import backend.academy.scrapper.api.ListLinksResponse;
+import backend.academy.scrapper.api.RemoveLinkRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +53,7 @@ public class TrackerService {
 
     public boolean removeChatId(Long chatId) {
         trackedLinks.remove(chatId);
-        for (LinkResponse linkResponse : trackedLinks.get(chatId).links) {
+        for (LinkResponse linkResponse : trackedLinks.get(chatId).getLinks()) {
             deleteFromSet(linkResponse, chatId);
         }
         return chatIds.remove(chatId);
@@ -127,7 +133,7 @@ public class TrackerService {
         throw new UnsupportedOperationException("Unsupported link type: " + link);
     }
 
-    @Scheduled(fixedRate = 6000)
+    @Scheduled(fixedRate = 5000)
     private void sendHTTPResponse() {
         try {
             for (String link : linkCount.keySet()) {

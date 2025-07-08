@@ -1,7 +1,9 @@
-package backend.academy;
+package backend.academy.api;
 
 
 import java.util.Set;
+
+import backend.academy.bot.BotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

@@ -1,4 +1,4 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.api;
 
 public class LinkResponse implements ILinked {
     private Long id;

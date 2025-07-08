@@ -1,4 +1,4 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.api;
 
 public class RemoveLinkRequest implements ILinked {
     String url;

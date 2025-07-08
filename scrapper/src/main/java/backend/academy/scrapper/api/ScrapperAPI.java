@@ -1,10 +1,12 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.api;
 
 
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import backend.academy.scrapper.service.TrackerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

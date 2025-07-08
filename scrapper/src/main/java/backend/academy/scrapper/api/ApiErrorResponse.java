@@ -1,4 +1,4 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.api;
 
 import java.util.ArrayList;
 import org.jetbrains.annotations.NotNull;

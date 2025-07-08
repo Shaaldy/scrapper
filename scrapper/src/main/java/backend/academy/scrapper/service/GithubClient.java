@@ -1,7 +1,9 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.service;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+
+import backend.academy.scrapper.ScrapperConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import static backend.academy.scrapper.TrackerService.ISO_INSTANT;
+import static backend.academy.scrapper.service.TrackerService.ISO_INSTANT;
 
 
 @Service
