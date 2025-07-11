@@ -1,18 +1,17 @@
 package backend.academy.scrapper.service;
 
 
+import backend.academy.scrapper.api.AddLinkRequest;
+import backend.academy.scrapper.api.ILinked;
+import backend.academy.scrapper.api.LinkResponse;
+import backend.academy.scrapper.api.ListLinksResponse;
+import backend.academy.scrapper.api.RemoveLinkRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import backend.academy.scrapper.api.AddLinkRequest;
-import backend.academy.scrapper.api.ILinked;
-import backend.academy.scrapper.api.LinkResponse;
-import backend.academy.scrapper.api.ListLinksResponse;
-import backend.academy.scrapper.api.RemoveLinkRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +31,7 @@ public class TrackerService {
     protected static DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
     Logger logger = LoggerFactory.getLogger(TrackerService.class);
     GithubClient githubClient;
+    SOClient soClient;
     RestTemplate restTemplate;
     Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
     Set<Long> chatIds = new HashSet<>();
@@ -41,8 +41,9 @@ public class TrackerService {
     private String botAPI;
 
     @Autowired
-    public TrackerService(GithubClient githubClient, RestTemplate restTemplate) {
+    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate) {
         this.githubClient = githubClient;
+        this.soClient = soClient;
         this.restTemplate = restTemplate;
     }
 
@@ -110,34 +111,35 @@ public class TrackerService {
         }
     }
 
-    private boolean isUpdated(String link) {
-        if (isGithubLink(link)) {
-            if (!lastUpdated.containsKey(link)) {
-                lastUpdated.put(link, githubClient.updateTime(link));
-                logger.info("Первый запрос по ссылке {}", link);
-                return false;
-            }
-            LocalDateTime time1 = lastUpdated.get(link);
-            LocalDateTime time2 = githubClient.updateTime(link);
-            logger.info("Вребя обновления репозитория {} в БД - {}, Время обновления репозитория после HTTP-запроса - {}", link, time1, time2);
-            if (time1.isBefore(time2)){
-                lastUpdated.put(link, time2);
-                return true;
-            }
+    private boolean isUpdated(IClient client, String link) {
+        if (!lastUpdated.containsKey(link)) {
+            lastUpdated.put(link, client.getUpdatedAt(link));
+            logger.info("Первый запрос по ссылке {}", link);
             return false;
-        } else if (isStackoverflow(link)) {
-            logger.info("Stack overflow пока не поддерживается");
-            throw new UnsupportedOperationException("StackOverflow links not supported yet");
         }
-        logger.info("Неверная ссылка");
-        throw new UnsupportedOperationException("Unsupported link type: " + link);
+        LocalDateTime time1 = lastUpdated.get(link);
+        LocalDateTime time2 = client.getUpdatedAt(link);
+        logger.info("Вребя обновления репозитория {} в БД - {}, Время обновления репозитория после HTTP-запроса - {}", link, time1, time2);
+        if (time1.isBefore(time2)) {
+            lastUpdated.put(link, time2);
+            return true;
+        }
+        return false;
     }
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 50000)
     private void sendHTTPResponse() {
         try {
+            IClient client = null;
             for (String link : linkCount.keySet()) {
-                if (isUpdated(link)) {
+                if (isGithubLink(link)) {
+                    client = githubClient;
+                } else if (isStackoverflow(link)) {
+                    client = soClient;
+                } else {
+                    throw new UnsupportedOperationException("Unsupported link type: " + link);
+                }
+                if (isUpdated(client, link)) {
                     HttpHeaders headers = new HttpHeaders();
                     headers.set("Url", link);
                     headers.set("Description", "нет описания, временная затычка");
@@ -155,7 +157,7 @@ public class TrackerService {
     }
 
     private boolean isStackoverflow(String link) {
-        return link.startsWith("https://stackoverflow.com/");
+        return link.startsWith("https://ru.stackoverflow.com");
     }
 
 }
