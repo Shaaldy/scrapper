@@ -1,22 +1,21 @@
 package backend.academy.scrapper.service;
 
+import backend.academy.scrapper.ScrapperConfig;
 import java.time.LocalDateTime;
 import java.util.Map;
-
-import backend.academy.scrapper.ScrapperConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import static backend.academy.scrapper.service.TrackerService.ISO_INSTANT;
 
 
-@Service
-class GithubClient {
+@Component
+class GithubClient implements IClient {
     private final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
     private final Logger logger = LoggerFactory.getLogger(GithubClient.class);
     private final RestTemplate restTemplate;
@@ -34,7 +33,7 @@ class GithubClient {
         return "https://api.github.com/repos/" + info;
     }
 
-    public LocalDateTime updateTime(String link) {
+    public LocalDateTime getUpdatedAt(String link) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "token " + githubToken);
         headers.set("User-Agent", userAgent);
