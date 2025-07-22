@@ -1,5 +1,6 @@
 package backend.academy.scrapper.service;
 
+import backend.academy.scrapper.Storage;
 import backend.academy.scrapper.api.AddLinkRequest;
 import backend.academy.scrapper.api.RemoveLinkRequest;
 import backend.academy.scrapper.api.ListLinksResponse;
@@ -36,7 +37,8 @@ public class TrackerServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        trackerService = new TrackerService(githubClient, soClient, restTemplate);
+        Storage storage = new Storage();
+        trackerService = new TrackerService(githubClient, soClient, restTemplate, storage);
     }
 
     @Test

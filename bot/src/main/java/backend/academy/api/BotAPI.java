@@ -1,9 +1,8 @@
 package backend.academy.api;
 
 
-import java.util.Set;
-
 import backend.academy.bot.BotService;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,9 +22,6 @@ public class BotAPI {
         this.botService = botService;
     }
 
-    /**
-     * @RequestHeader Long id - как я понял это id ответа, как его формировать пока не думал и скорее всего он нужен для журнала, поэтому пока без него но о в наших сердцах
-     */
     @PostMapping("/updates")
     public ResponseEntity<?> updates(@RequestHeader String url, @RequestHeader String description, @RequestBody Set<Long> tgChatIds) {
         for (Long chatId : tgChatIds) {

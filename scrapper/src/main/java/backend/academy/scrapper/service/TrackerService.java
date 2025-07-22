@@ -1,15 +1,11 @@
 package backend.academy.scrapper.service;
 
 
+import backend.academy.scrapper.Storage;
 import backend.academy.scrapper.api.AddLinkRequest;
-import backend.academy.scrapper.api.ILinked;
-import backend.academy.scrapper.api.LinkResponse;
 import backend.academy.scrapper.api.ListLinksResponse;
 import backend.academy.scrapper.api.RemoveLinkRequest;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,119 +23,60 @@ import org.springframework.web.client.RestTemplate;
 @EnableScheduling
 public class TrackerService {
 
-    Logger logger = LoggerFactory.getLogger(TrackerService.class);
-    GithubClient githubClient;
-    SOClient soClient;
-    RestTemplate restTemplate;
-    Map<Long, ListLinksResponse> trackedLinks = new HashMap<>();
-    Set<Long> chatIds = new HashSet<>();
-    Map<String, Set<Long>> linkCount = new HashMap<>();
-    Map<String, LocalDateTime> lastUpdated = new HashMap<>();
+    protected final Logger logger = LoggerFactory.getLogger(TrackerService.class);
+    protected final GithubClient githubClient;
+    protected final SOClient soClient;
+    protected final RestTemplate restTemplate;
+    protected final Storage storage;
+
     @Value("http://localhost:8080/api/bot")
     private String botAPI;
 
     @Autowired
-    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate) {
+    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate, Storage storage) {
         this.githubClient = githubClient;
         this.soClient = soClient;
         this.restTemplate = restTemplate;
+        this.storage = storage;
     }
 
     public boolean addChatId(Long chatId) {
-        boolean added = chatIds.add(chatId); // true если chatId не было в set
-        trackedLinks.computeIfAbsent(chatId, _ -> new ListLinksResponse());
-        return added;
+        return storage.addUser(chatId);
     }
 
 
     public boolean removeChatId(Long chatId) {
-        trackedLinks.remove(chatId);
-        for (LinkResponse linkResponse : trackedLinks.get(chatId).getLinks()) {
-            deleteFromSet(linkResponse, chatId);
-        }
-        return chatIds.remove(chatId);
+        return storage.removeUser(chatId);
     }
 
     public ListLinksResponse getLinks(Long chatId) {
-        logger.info("Getting links for {}\n {}", chatId, trackedLinks.toString());
-        return trackedLinks.getOrDefault(chatId, new ListLinksResponse());
+        return storage.getLinks(chatId);
     }
 
-    public void addLink(Long chatId, AddLinkRequest addLinkRequest) {
-        ListLinksResponse response = trackedLinks.get(chatId);
-        String link = addLinkRequest.getLink();
-        LinkResponse linkResponse = new LinkResponse(chatId, link);
-        if (linkCount.containsKey(link)) {
-            linkCount.get(link).add(chatId);
-        } else {
-            linkCount.put(link, new HashSet<>(Set.of(chatId)));
-        }
-        if (response == null) {
-            Set<LinkResponse> lR = new HashSet<>();
-
-            lR.add(linkResponse);
-            trackedLinks.put(chatId, new ListLinksResponse(lR));
-            return;
-        }
-        response.addLink(linkResponse);
-        trackedLinks.put(chatId, response);
+    public void addLink(Long chatId, AddLinkRequest req) {
+        storage.addLink(chatId, req.getLink());
     }
 
-    public boolean removeLink(Long chatId, RemoveLinkRequest removeLinkRequest) {
-        ListLinksResponse links = trackedLinks.get(chatId);
-        if (links == null) {
-            logger.warn("Попытка удалить ссылку у несуществующего chatId: {}", chatId);
-            return false;
-        }
-        String link = removeLinkRequest.getLink();
-        if (links.deleteLink(link)) {
-            deleteFromSet(removeLinkRequest, chatId);
-            trackedLinks.put(chatId, links);
-            return true;
-        }
-        return false;
+    public boolean removeLink(Long chatId, RemoveLinkRequest req) {
+        return storage.removeLink(chatId, req.getLink());
     }
-
-
-    private void deleteFromSet(ILinked iLinked, Long id) {
-        String url = iLinked.getLink();
-        Set<Long> ids = linkCount.get(url);
-        if (ids != null) {
-            ids.remove(id);
-            if (ids.isEmpty()) {
-                linkCount.remove(url);
-            }
-        }
-    }
-
 
     private boolean isUpdated(IClient client, String link) {
-        if (!lastUpdated.containsKey(link)) {
-            lastUpdated.put(link, client.getUpdatedAt(link));
-            logger.info("Первый запрос по ссылке {}", link);
-            return false;
-        }
-        LocalDateTime time1 = lastUpdated.get(link);
-        LocalDateTime time2 = client.getUpdatedAt(link);
-        logger.info("Вребя обновления репозитория {} в БД - {}, Время обновления репозитория после HTTP-запроса - {}", link, time1, time2);
-        if (time1.isBefore(time2)) {
-            lastUpdated.put(link, time2);
-            return true;
-        }
-        return false;
+        LocalDateTime now = client.getUpdatedAt(link);
+        return storage.isUpdated(link, now);
     }
 
-    @Scheduled(fixedRate = 50000)
+    @Scheduled(fixedRate = 5000)
     protected void sendHTTPResponse() {
         try {
-            for (String link : linkCount.keySet()) {
+            for (String link : storage.getAllTrackedLinks()) {
                 IClient client = getClientForLink(link);
                 if (isUpdated(client, link)) {
                     HttpHeaders headers = new HttpHeaders();
                     headers.set("Url", link);
                     headers.set("Description", "нет описания, временная затычка");
 
-                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(linkCount.get(link), headers);
+                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(storage.getSubscribers(link), headers);
                     restTemplate.exchange(botAPI + "/updates", HttpMethod.POST, httpEntity, Void.class);
                 }
             }
