@@ -15,7 +15,7 @@ import static backend.academy.scrapper.service.TrackerService.ISO_INSTANT;
 
 
 @Component
-class GithubClient implements IClient {
+public class GithubClient implements IClient {
     private final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0";
     private final Logger logger = LoggerFactory.getLogger(GithubClient.class);
     private final RestTemplate restTemplate;

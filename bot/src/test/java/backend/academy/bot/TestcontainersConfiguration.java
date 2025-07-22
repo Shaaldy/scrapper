@@ -26,3 +26,4 @@ class TestcontainersConfiguration {
         return new KafkaContainer("apache/kafka-native:3.8.1").withExposedPorts(9092);
     }
 }
+

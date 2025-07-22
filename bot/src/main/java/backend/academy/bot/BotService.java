@@ -33,12 +33,12 @@ public class BotService {
     RestTemplate restTemplate;
     Map<Long, State> userStates = new HashMap<>();
     @Value("${app.scrapperApiUrl}")
-    private String scrapperApiUrl;
+    String scrapperApiUrl;
 
     @Autowired
-    public BotService(BotConfig botConfig) {
-        this.telegramBot = new TelegramBot(botConfig.telegramToken());
-        this.restTemplate = botConfig.restTemplate();
+    public BotService(TelegramBot telegramBot, RestTemplate restTemplate) {
+        this.telegramBot = telegramBot;
+        this.restTemplate = restTemplate;
         telegramBot.setUpdatesListener(updates -> {
             for (Update update : updates) {
                 handleUpdate(update);
@@ -93,7 +93,7 @@ public class BotService {
         }
     }
 
-    private void sendMessage(String text, long chatId) {
+    protected void sendMessage(String text, long chatId) {
         telegramBot.execute(new SendMessage(chatId, text));
     }
 
@@ -221,7 +221,7 @@ public class BotService {
     private void handleUntracked(String url, long chatId) {
         if (isInvalidURL(url)) {
             logger.error("Некорректная ссылка {}", url);
-            sendMessage("Введите пожалуйста ссылка", chatId);
+            sendMessage("Введите пожалуйста ссылку", chatId);
             return;
         }
         try {

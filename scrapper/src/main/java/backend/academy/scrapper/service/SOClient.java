@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.InvalidUrlException;
 
 
 @Component
@@ -40,7 +41,7 @@ public class SOClient implements IClient {
             return "https://api.stackexchange.com/2.3/questions/" + id + "/answers?site=ru.stackoverflow&sort=activity";
         } else {
             logger.error("Invalid URL: " + url);
-            throw new RuntimeException("Invalid URL");
+            throw new InvalidUrlException("Invalid URL");
         }
     }
 
@@ -52,12 +53,27 @@ public class SOClient implements IClient {
             HttpEntity<Map> entity = new HttpEntity<>(headers);
             entity = restTemplate.exchange(makeUrl(link), HttpMethod.GET, entity, Map.class);
             Map<String, Object> body = entity.getBody();
+            if (body == null || !body.containsKey("items")) {
+                throw new RuntimeException("Error getting last activity on link: no response body or missing 'items'");
+            }
+
             List<Map> owners = (List<Map>) body.get("items");
+            if (owners == null || owners.isEmpty()) {
+                throw new RuntimeException("Error getting last activity on link: no items");
+            }
             Integer lastActivity = (Integer) owners.getFirst().get("last_activity_date");
+
+            if (lastActivity == null) {
+                throw new RuntimeException("Error getting last activity on link: missing 'last_activity_date'");
+            }
+
             logger.info("Последняя активность ссылки {} - получено {}", link, lastActivity);
             Instant instant = Instant.ofEpochSecond(lastActivity);
             return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            throw e;
+        }
+        catch (Exception e) {
             logger.error("Error getting last activity on link {}", link, e);
             throw new RuntimeException("Error getting last activity on link " + link, e);
         }

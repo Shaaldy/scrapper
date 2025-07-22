@@ -1,5 +1,6 @@
 package backend.academy;
 
+import com.pengrad.telegrambot.TelegramBot;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -12,5 +13,9 @@ public record BotConfig(@NotEmpty String telegramToken, @NotEmpty String scrappe
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
+    }
+    @Bean
+    public TelegramBot telegramBot() {
+        return new TelegramBot(this.telegramToken);
     }
 }
