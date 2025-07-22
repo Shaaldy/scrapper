@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class TrackerServiceTest {
+public class TrackerServiceTest {
 
     @Mock
     GithubClient githubClient;

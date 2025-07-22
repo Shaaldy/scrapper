@@ -3,17 +3,17 @@ package backend.academy.scrapper.api;
 import backend.academy.scrapper.service.TrackerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Map;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -43,7 +43,7 @@ public class ScrapperAPITest {
     void registerChat_invalidId() throws Exception {
         mockMvc.perform(post("/api/scrapper/tg-chat/-1"))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.description").value("ID чата должен быть положительным числом"));
+            .andExpect(jsonPath("$.exceptionMessage").value("ID чата должен быть положительным числом"));
     }
 
     @Test
@@ -52,7 +52,7 @@ public class ScrapperAPITest {
 
         mockMvc.perform(post("/api/scrapper/tg-chat/123"))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.description").value("Чат с таким ID уже существует"));
+            .andExpect(jsonPath("$.exceptionMessage").value("Чат с таким ID уже существует"));
     }
 
     @Test
@@ -101,7 +101,8 @@ public class ScrapperAPITest {
 
     @Test
     void deleteLink_success() throws Exception {
-        when(trackerService.removeLink(123L, new RemoveLinkRequest("https://github.com/test"))).thenReturn(true);
+        when(trackerService.removeLink(eq(123L), any(RemoveLinkRequest.class))).thenReturn(true);
+
 
         mockMvc.perform(delete("/api/scrapper/links")
                 .header("Tg-chat-id", 123)

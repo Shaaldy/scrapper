@@ -7,7 +7,6 @@ import backend.academy.scrapper.api.LinkResponse;
 import backend.academy.scrapper.api.ListLinksResponse;
 import backend.academy.scrapper.api.RemoveLinkRequest;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -28,7 +27,6 @@ import org.springframework.web.client.RestTemplate;
 @EnableScheduling
 public class TrackerService {
 
-    protected static DateTimeFormatter ISO_INSTANT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
     Logger logger = LoggerFactory.getLogger(TrackerService.class);
     GithubClient githubClient;
     SOClient soClient;
@@ -49,7 +47,7 @@ public class TrackerService {
 
     public boolean addChatId(Long chatId) {
         boolean added = chatIds.add(chatId); // true если chatId не было в set
-        trackedLinks.computeIfAbsent(chatId, k -> new ListLinksResponse());
+        trackedLinks.computeIfAbsent(chatId, _ -> new ListLinksResponse());
         return added;
     }
 
@@ -134,27 +132,22 @@ public class TrackerService {
     @Scheduled(fixedRate = 50000)
     protected void sendHTTPResponse() {
         try {
-            IClient client = null;
             for (String link : linkCount.keySet()) {
-                if (isGithubLink(link)) {
-                    client = githubClient;
-                } else if (isStackoverflow(link)) {
-                    client = soClient;
-                } else {
-                    throw new UnsupportedOperationException("Unsupported link type: " + link);
-                }
+                IClient client = getClientForLink(link);
                 if (isUpdated(client, link)) {
                     HttpHeaders headers = new HttpHeaders();
                     headers.set("Url", link);
                     headers.set("Description", "нет описания, временная затычка");
-                    HttpEntity<Set> httpEntity = new HttpEntity<>(linkCount.get(link), headers);
+
+                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(linkCount.get(link), headers);
                     restTemplate.exchange(botAPI + "/updates", HttpMethod.POST, httpEntity, Void.class);
                 }
             }
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            logger.error("Ошибка при отправке обновлений: {}", e.getMessage(), e);
         }
     }
+
 
     private boolean isGithubLink(String link) {
         return link.startsWith("https://github.com/");
@@ -163,5 +156,16 @@ public class TrackerService {
     private boolean isStackoverflow(String link) {
         return link.startsWith("https://ru.stackoverflow.com");
     }
+
+    private IClient getClientForLink(String link) {
+        if (isGithubLink(link)) {
+            return githubClient;
+        } else if (isStackoverflow(link)) {
+            return soClient;
+        } else {
+            throw new UnsupportedOperationException("Unsupported link type: " + link);
+        }
+    }
+
 
 }

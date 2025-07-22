@@ -1,5 +1,9 @@
 package backend.academy.scrapper.api;
 
+
+import lombok.EqualsAndHashCode;
+
+@EqualsAndHashCode
 public class RemoveLinkRequest implements ILinked {
     String url;
     public RemoveLinkRequest(String url) {

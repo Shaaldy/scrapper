@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
-class SOClientTest {
+public class SOClientTest {
 
     @Mock
     private RestTemplate restTemplate;
@@ -36,8 +36,6 @@ class SOClientTest {
 
     private final String validLink = "https://ru.stackoverflow.com/questions/12345678/example-question/";
     private final String invalidLink = "https://ru.stackoverflow.com/blabla/123456/";
-
-    private final String expectedUrl = "https://api.stackexchange.com/2.3/questions/12345678/answers?site=ru.stackoverflow&sort=activity";
 
     @BeforeEach
     void setup() {
@@ -56,6 +54,7 @@ class SOClientTest {
         Map<String, Object> response = Map.of("items", List.of(item));
 
         ResponseEntity<Map> responseEntity = new ResponseEntity<>(response, HttpStatus.OK);
+        String expectedUrl = "https://api.stackexchange.com/2.3/questions/12345678/answers?site=ru.stackoverflow&sort=activity";
         when(restTemplate.exchange(eq(expectedUrl), eq(HttpMethod.GET), any(HttpEntity.class), eq(Map.class)))
             .thenReturn(responseEntity);
 

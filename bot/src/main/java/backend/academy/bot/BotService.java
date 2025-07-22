@@ -1,6 +1,5 @@
 package backend.academy.bot;
 
-import backend.academy.BotConfig;
 import backend.academy.api.ApiErrorResponse;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
@@ -170,6 +169,7 @@ public class BotService {
             HttpEntity<String> entity = new HttpEntity<>(headers);
             ResponseEntity<Map> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.GET, entity, Map.class);
             Map objectsMap = response.getBody();
+            assert objectsMap != null;
             List<String> links = (List<String>) objectsMap.get("links");
             logger.info("Запрос на получение ссылок удачен для пользователя с ID {}", chatId);
             if (links != null && !links.isEmpty()) {
@@ -194,7 +194,7 @@ public class BotService {
     private void handleTracked(String url, long chatId) {
         if (isInvalidURL(url)) {
             logger.error("Некорректная ссылка {}", url);
-            sendMessage("Введите пожалуйста ссылка", chatId);
+            sendMessage("Введите пожалуйста ссылку", chatId);
             return;
         }
         try {
@@ -231,6 +231,7 @@ public class BotService {
             ResponseEntity<ApiErrorResponse> response = restTemplate.exchange(scrapperApiUrl + "/links", HttpMethod.DELETE, entity, ApiErrorResponse.class);
             ApiErrorResponse apiErrorResponse = response.getBody();
             logger.info("apiErrorResponse: {}", apiErrorResponse);
+            assert apiErrorResponse != null;
             if (apiErrorResponse.code().equals("200")) {
                 userStates.put(chatId, State.CONTINUE);
                 sendMessage("Ссылка теперь не отслеживается", chatId);
