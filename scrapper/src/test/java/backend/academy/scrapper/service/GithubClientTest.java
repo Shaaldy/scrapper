@@ -1,6 +1,6 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.service;
 
-import backend.academy.scrapper.service.GithubClient;
+import backend.academy.scrapper.ScrapperConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -8,7 +8,6 @@ import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 import static java.time.format.DateTimeFormatter.ISO_INSTANT;

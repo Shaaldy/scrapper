@@ -48,9 +48,11 @@ public class TrackerService {
     }
 
     public boolean addChatId(Long chatId) {
-        chatIds.add(chatId);
-        return true;
+        boolean added = chatIds.add(chatId); // true если chatId не было в set
+        trackedLinks.computeIfAbsent(chatId, k -> new ListLinksResponse());
+        return added;
     }
+
 
     public boolean removeChatId(Long chatId) {
         trackedLinks.remove(chatId);
@@ -72,7 +74,7 @@ public class TrackerService {
         if (linkCount.containsKey(link)) {
             linkCount.get(link).add(chatId);
         } else {
-            linkCount.put(link, Set.of(chatId));
+            linkCount.put(link, new HashSet<>(Set.of(chatId)));
         }
         if (response == null) {
             Set<LinkResponse> lR = new HashSet<>();
@@ -87,6 +89,10 @@ public class TrackerService {
 
     public boolean removeLink(Long chatId, RemoveLinkRequest removeLinkRequest) {
         ListLinksResponse links = trackedLinks.get(chatId);
+        if (links == null) {
+            logger.warn("Попытка удалить ссылку у несуществующего chatId: {}", chatId);
+            return false;
+        }
         String link = removeLinkRequest.getLink();
         if (links.deleteLink(link)) {
             deleteFromSet(removeLinkRequest, chatId);
@@ -99,17 +105,15 @@ public class TrackerService {
 
     private void deleteFromSet(ILinked iLinked, Long id) {
         String url = iLinked.getLink();
-        if (linkCount.containsKey(url)) {
-            for (Long chatId : linkCount.get(url)) {
-                if (chatId.equals(id)) {
-                    linkCount.get(url).remove(chatId);
-                }
-            }
-            if (linkCount.get(url).isEmpty()) {
+        Set<Long> ids = linkCount.get(url);
+        if (ids != null) {
+            ids.remove(id);
+            if (ids.isEmpty()) {
                 linkCount.remove(url);
             }
         }
     }
+
 
     private boolean isUpdated(IClient client, String link) {
         if (!lastUpdated.containsKey(link)) {
@@ -128,7 +132,7 @@ public class TrackerService {
     }
 
     @Scheduled(fixedRate = 50000)
-    private void sendHTTPResponse() {
+    protected void sendHTTPResponse() {
         try {
             IClient client = null;
             for (String link : linkCount.keySet()) {

@@ -1,8 +1,8 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.service;
 
 
-import backend.academy.scrapper.ScrapperConfig.StackOverflowCredentials;
-import backend.academy.scrapper.service.SOClient;
+
+import backend.academy.scrapper.ScrapperConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -29,7 +29,7 @@ class SOClientTest {
     private ScrapperConfig scrapperConfig;
 
     @Mock
-    private StackOverflowCredentials soCredentials;
+    private ScrapperConfig.StackOverflowCredentials soCredentials;
 
     @InjectMocks
     private SOClient soClient;
