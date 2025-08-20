@@ -6,6 +6,7 @@ import backend.academy.scrapper.api.AddLinkRequest;
 import backend.academy.scrapper.api.ListLinksResponse;
 import backend.academy.scrapper.api.RemoveLinkRequest;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,28 +62,46 @@ public class TrackerService {
         return storage.removeLink(chatId, req.getLink());
     }
 
-    private boolean isUpdated(IClient client, String link) {
-        LocalDateTime now = client.getUpdatedAt(link);
-        return storage.isUpdated(link, now);
-    }
 
     @Scheduled(fixedRate = 5000)
     protected void sendHTTPResponse() {
         try {
             for (String link : storage.getAllTrackedLinks()) {
                 IClient client = getClientForLink(link);
-                if (isUpdated(client, link)) {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.set("Url", link);
-                    headers.set("Description", "нет описания, временная затычка");
+                UpdateInfo updateInfo = client.checkForUpdates(link);
 
-                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(storage.getSubscribers(link), headers);
+                if (updateInfo.hasUpdates()) {
+                    logger.info("Отправляется ответ клиенту");
+                    HttpHeaders headers = createHeaders(updateInfo, link);
+                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(
+                        storage.getSubscribers(link),
+                        headers
+                    );
                     restTemplate.exchange(botAPI + "/updates", HttpMethod.POST, httpEntity, Void.class);
+
                 }
             }
         } catch (Exception e) {
             logger.error("Ошибка при отправке обновлений: {}", e.getMessage(), e);
         }
+    }
+
+    private HttpHeaders createHeaders(UpdateInfo updateInfo, String link) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("url", link);  // ← lowercase
+        headers.set("update_type", updateInfo.type());  // ← подчеркивание
+        headers.set("updated_at", updateInfo.updatedAt().toString());  // ← lowercase
+
+        if (updateInfo.answer() != null) {
+            populateGitHubHeaders(headers, updateInfo.answer());
+        }
+
+        return headers;
+    }
+
+    private void populateGitHubHeaders(HttpHeaders headers, GithubBase answer) {
+        headers.set("description", answer.getDescription());
+        headers.set("author", answer.getAuthor());
     }
 
 

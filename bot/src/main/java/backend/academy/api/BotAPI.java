@@ -23,9 +23,16 @@ public class BotAPI {
     }
 
     @PostMapping("/updates")
-    public ResponseEntity<?> updates(@RequestHeader String url, @RequestHeader String description, @RequestBody Set<Long> tgChatIds) {
+    public ResponseEntity<?> updates(@RequestHeader("url") String url,
+                                     @RequestHeader("update_type") String Update_Type,
+                                     @RequestHeader("updated_at") String updated_at,
+                                     @RequestHeader (value = "description", required = false) String description,
+                                     @RequestHeader (value = "author", required = false) String author,
+                                     @RequestBody Set<Long> tgChatIds) {
         for (Long chatId : tgChatIds) {
-            if (!botService.sendUpdate(chatId, url)) {
+            GHAns update = new GHAns(Update_Type, url, description, author, updated_at);
+
+            if (!botService.sendUpdate(chatId, update)) {
                 ApiErrorResponse apiErrorResponse = new ApiErrorResponse("Не корректные параметры запроса", "400", "IllegalArgumentException", "ID чата должен быть положительным числом", null);
                 return ResponseEntity.badRequest().body(apiErrorResponse);
             }

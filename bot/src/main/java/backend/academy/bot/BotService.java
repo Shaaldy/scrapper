@@ -1,6 +1,7 @@
 package backend.academy.bot;
 
 import backend.academy.api.ApiErrorResponse;
+import backend.academy.api.GHAns;
 import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
@@ -82,9 +83,10 @@ public class BotService {
         }
     }
 
-    public boolean sendUpdate(Long chatId, String url) {
+    public boolean sendUpdate(Long chatId, GHAns update) {
         try {
-            sendMessage("Репозиторий " + url + " обвновился", chatId);
+            String message = update.toFormattedMessage();
+            sendMessage(message, chatId);
             return true;
         } catch (Exception e) {
             logger.error("Не удалось отправить сообщение");

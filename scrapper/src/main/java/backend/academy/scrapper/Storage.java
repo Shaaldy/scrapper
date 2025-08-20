@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import backend.academy.scrapper.service.IssueAnswer;
+import backend.academy.scrapper.service.PRAnswer;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,6 +17,9 @@ public class Storage {
     private final Map<Long, ListLinksResponse> userLinks = new HashMap<>();
     private final Map<String, Set<Long>> linkSubscribers = new HashMap<>();
     private final Map<String, LocalDateTime> lastUpdated = new HashMap<>();
+    private final Map<String, PRAnswer> lastPRAnswer = new HashMap<>();
+    private final Map<String, IssueAnswer>  lastIssueAnswer = new HashMap<>();
+
 
     public boolean addUser(Long chatId) {
         return userLinks.putIfAbsent(chatId, new ListLinksResponse()) == null;
@@ -78,6 +83,33 @@ public class Storage {
             return prev != null;
         }
         return false;
+    }
+
+    public boolean setPR(String link, PRAnswer prAnswer) {
+        PRAnswer previousPR = lastPRAnswer.get(link);
+        LocalDateTime prevPrTime = previousPR != null ? previousPR.getUpdatedAt() : null;
+
+        if (prevPrTime == null || prevPrTime.isBefore(prAnswer.getUpdatedAt())) {
+            lastPRAnswer.put(link, prAnswer);
+            return prevPrTime != null; // true если было обновление, false если первый раз
+        }
+        return false;
+    }
+
+    public boolean setIssue(String link, IssueAnswer issueAnswer) {
+        IssueAnswer previousIssue = lastIssueAnswer.get(link);
+        LocalDateTime prevIssueTime = previousIssue != null ? previousIssue.getUpdatedAt() : null;
+
+        if (prevIssueTime == null || prevIssueTime.isBefore(issueAnswer.getUpdatedAt())) {
+            lastIssueAnswer.put(link, issueAnswer);
+            return prevIssueTime != null; // true если было обновление, false если первый раз
+        }
+        return false;
+    }
+
+
+    public LocalDateTime getLastUpdatedAtLinks(String link){
+        return lastUpdated.get(link);
     }
 
 }

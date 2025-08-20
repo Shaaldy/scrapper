@@ -7,8 +7,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import backend.academy.scrapper.Storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +28,13 @@ public class SOClient implements IClient {
     private final Logger logger = LoggerFactory.getLogger(GithubClient.class);
     private final RestTemplate restTemplate;
     private final StackOverflowCredentials stackOverflowCredentials;
+    private final Storage storage;
 
     @Autowired
-    public SOClient(ScrapperConfig scrapperConfig) {
+    public SOClient(ScrapperConfig scrapperConfig, Storage storage) {
         this.restTemplate = scrapperConfig.restTemplate();
         this.stackOverflowCredentials = scrapperConfig.stackOverflow();
+        this.storage = storage;
     }
 
     private String makeUrl(String url) {
@@ -77,6 +81,18 @@ public class SOClient implements IClient {
             logger.error("Error getting last activity on link {}", link, e);
             throw new RuntimeException("Error getting last activity on link " + link, e);
         }
+    }
+
+    @Override
+    public UpdateInfo checkForUpdates(String link) {
+        LocalDateTime soUpdated = getUpdatedAt(link);
+        LocalDateTime lastCheck = storage.getLastUpdatedAtLinks(link);
+
+        if (soUpdated != null && soUpdated.isAfter(lastCheck)) {
+            return new UpdateInfo(true, "SO", null, soUpdated);
+        }
+
+        return new UpdateInfo(false, null, null, null);
     }
 
 }
