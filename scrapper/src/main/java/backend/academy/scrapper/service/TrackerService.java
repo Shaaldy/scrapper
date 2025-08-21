@@ -5,9 +5,10 @@ import backend.academy.scrapper.Storage;
 import backend.academy.scrapper.api.AddLinkRequest;
 import backend.academy.scrapper.api.ListLinksResponse;
 import backend.academy.scrapper.api.RemoveLinkRequest;
-import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Set;
+import backend.academy.scrapper.service.clients.ClientAnswer;
+import backend.academy.scrapper.service.clients.github.GithubClient;
+import backend.academy.scrapper.service.clients.stackoverflow.SOClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,11 +69,11 @@ public class TrackerService {
         try {
             for (String link : storage.getAllTrackedLinks()) {
                 IClient client = getClientForLink(link);
-                UpdateInfo updateInfo = client.checkForUpdates(link);
+                ClientAnswer clientAnswer = client.checkForUpdates(link);
 
-                if (updateInfo.hasUpdates()) {
+                if (clientAnswer.hasUpdates()) {
                     logger.info("Отправляется ответ клиенту");
-                    HttpHeaders headers = createHeaders(updateInfo, link);
+                    HttpHeaders headers = createHeaders(clientAnswer, link);
                     HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(
                         storage.getSubscribers(link),
                         headers
@@ -86,20 +87,20 @@ public class TrackerService {
         }
     }
 
-    private HttpHeaders createHeaders(UpdateInfo updateInfo, String link) {
+    private HttpHeaders createHeaders(ClientAnswer clientAnswer, String link) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("url", link);  // ← lowercase
-        headers.set("update_type", updateInfo.type());  // ← подчеркивание
-        headers.set("updated_at", updateInfo.updatedAt().toString());  // ← lowercase
+        headers.set("update_type", clientAnswer.getAnswer().toString());  // ← подчеркивание
+        headers.set("updated_at", clientAnswer.getUpdatedAt().toString());  // ← lowercase
 
-        if (updateInfo.answer() != null) {
-            populateGitHubHeaders(headers, updateInfo.answer());
+        if (clientAnswer.getAnswer() != Answer.SO || clientAnswer.getAnswer() != Answer.PR) {
+            populateGitHubHeaders(headers, clientAnswer);
         }
 
         return headers;
     }
 
-    private void populateGitHubHeaders(HttpHeaders headers, GithubBase answer) {
+    private void populateGitHubHeaders(HttpHeaders headers, ClientAnswer answer) {
         headers.set("description", answer.getDescription());
         headers.set("author", answer.getAuthor());
     }

@@ -7,8 +7,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import backend.academy.scrapper.service.IssueAnswer;
-import backend.academy.scrapper.service.PRAnswer;
+import backend.academy.scrapper.service.clients.Updatable;
+import backend.academy.scrapper.service.clients.github.IssueAnswer;
+import backend.academy.scrapper.service.clients.github.PRAnswer;
+import backend.academy.scrapper.service.clients.github.RepoAnswer;
+import backend.academy.scrapper.service.clients.stackoverflow.SOCommentAnswer;
+import backend.academy.scrapper.service.clients.stackoverflow.SORequestAnswer;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,9 +20,11 @@ public class Storage {
 
     private final Map<Long, ListLinksResponse> userLinks = new HashMap<>();
     private final Map<String, Set<Long>> linkSubscribers = new HashMap<>();
-    private final Map<String, LocalDateTime> lastUpdated = new HashMap<>();
+    private final Map<String, SOCommentAnswer> lastSOComment = new HashMap<>();
+    private final Map<String, SORequestAnswer> lastSORequest = new HashMap<>();
     private final Map<String, PRAnswer> lastPRAnswer = new HashMap<>();
     private final Map<String, IssueAnswer>  lastIssueAnswer = new HashMap<>();
+    private final Map<String, RepoAnswer> lastRepoAnswer = new HashMap<>();
 
 
     public boolean addUser(Long chatId) {
@@ -76,40 +82,40 @@ public class Storage {
         return linkSubscribers.keySet();
     }
 
-    public boolean isUpdated(String link, LocalDateTime newTime) {
-        LocalDateTime prev = lastUpdated.get(link);
-        if (prev == null || prev.isBefore(newTime)) {
-            lastUpdated.put(link, newTime);
-            return prev != null;
-        }
-        return false;
-    }
 
     public boolean setPR(String link, PRAnswer prAnswer) {
-        PRAnswer previousPR = lastPRAnswer.get(link);
-        LocalDateTime prevPrTime = previousPR != null ? previousPR.getUpdatedAt() : null;
-
-        if (prevPrTime == null || prevPrTime.isBefore(prAnswer.getUpdatedAt())) {
-            lastPRAnswer.put(link, prAnswer);
-            return prevPrTime != null; // true если было обновление, false если первый раз
-        }
-        return false;
+        return setAnswer(link, prAnswer, lastPRAnswer);
     }
 
     public boolean setIssue(String link, IssueAnswer issueAnswer) {
-        IssueAnswer previousIssue = lastIssueAnswer.get(link);
-        LocalDateTime prevIssueTime = previousIssue != null ? previousIssue.getUpdatedAt() : null;
-
-        if (prevIssueTime == null || prevIssueTime.isBefore(issueAnswer.getUpdatedAt())) {
-            lastIssueAnswer.put(link, issueAnswer);
-            return prevIssueTime != null; // true если было обновление, false если первый раз
-        }
-        return false;
+        return setAnswer(link, issueAnswer, lastIssueAnswer);
     }
 
+    public boolean setRepo(String link, RepoAnswer repoAnswer) {
+        return setAnswer(link, repoAnswer, lastRepoAnswer);
+    }
 
-    public LocalDateTime getLastUpdatedAtLinks(String link){
-        return lastUpdated.get(link);
+    public boolean setSOR(String link, SORequestAnswer sor) {
+        return setAnswer(link, sor, lastSORequest);
+    }
+
+    public boolean setSOC(String link, SOCommentAnswer soc) {
+        return setAnswer(link, soc, lastSOComment);
+    }
+
+    private <T extends Updatable> boolean setAnswer(
+        String link,
+        T newAnswer,
+        Map<String, T> storage
+    ) {
+        T previous = storage.get(link);
+        LocalDateTime prevTime = previous != null ? previous.getUpdatedAt() : null;
+
+        if (prevTime == null || prevTime.isBefore(newAnswer.getUpdatedAt())) {
+            storage.put(link, newAnswer);
+            return prevTime != null; // true = обновление, false = первый раз
+        }
+        return false;
     }
 
 }

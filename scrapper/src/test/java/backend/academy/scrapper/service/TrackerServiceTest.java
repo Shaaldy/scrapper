@@ -4,6 +4,8 @@ import backend.academy.scrapper.Storage;
 import backend.academy.scrapper.api.AddLinkRequest;
 import backend.academy.scrapper.api.RemoveLinkRequest;
 import backend.academy.scrapper.api.ListLinksResponse;
+import backend.academy.scrapper.service.clients.github.GithubClient;
+import backend.academy.scrapper.service.clients.stackoverflow.SOClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -85,7 +87,7 @@ public class TrackerServiceTest {
         LocalDateTime newTime = LocalDateTime.of(2024, 1, 1, 0, 0);
 
         // 1-й вызов: запоминаем
-        when(githubClient.getUpdatedAt(githubLink)).thenReturn(oldTime, newTime);
+        when(githubClient.repoUpdatedAt(githubLink)).thenReturn(oldTime, newTime);
 
         // Мокаем успешный POST в бот
         when(restTemplate.exchange(
@@ -150,7 +152,7 @@ public class TrackerServiceTest {
 
         LocalDateTime oldTime = LocalDateTime.of(2023, 1, 1, 0, 0);
         LocalDateTime newTime = LocalDateTime.of(2024, 1, 1, 0, 0);
-        when(githubClient.getUpdatedAt(githubLink)).thenReturn(oldTime, newTime);
+        when(githubClient.repoUpdatedAt(githubLink)).thenReturn(oldTime, newTime);
 
         when(restTemplate.exchange(
             contains("/updates"),
