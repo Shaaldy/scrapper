@@ -19,17 +19,17 @@ public class GHAns {
     public String toFormattedMessage() {
         if (isGitHubUpdate()) {
             return String.format(
-                "🔔 *Новое обновление в %s *\n\n" +
-                    "📝 *Описание:* %s\n" +
-                    "👤 *Автор:* %s\n" +
-                    "⏰ *Обновлено:* %s\n" +
-                    "🔗 *Ссылка:* %s",
+                "🔔 Новое обновление в %s \n\n" +
+                    "📝 Описание: %s\n" +
+                    "👤 Автор: %s\n" +
+                    "⏰ Обновлено: %s\n" +
+                    "🔗 Ссылка: %s",
                 type, description, author, updatedAt, url
             );
         } else {
             return String.format(
-                "🔔 *Новое обновление в %s*\n\n" +
-                    "🔗 *Ссылка:* %s",
+                "🔔 Новое обновление в %s\n\n" +
+                    "🔗 Ссылка: %s",
                 type,
                 url
             );
