@@ -1,7 +1,7 @@
-package backend.academy.scrapper.service.clients.github;
+package backend.academy.scrapper.service.github;
 
 import backend.academy.scrapper.ScrapperConfig;
-import backend.academy.scrapper.Storage;
+import backend.academy.scrapper.bd.StorageProvider;
 import backend.academy.scrapper.service.Answer;
 import backend.academy.scrapper.service.IClient;
 import java.time.Instant;
@@ -26,10 +26,10 @@ public class GithubClient implements IClient {
     private final Logger logger = LoggerFactory.getLogger(GithubClient.class);
     private final RestTemplate restTemplate;
     private final String githubToken;
-    private final Storage storage;
+    private final StorageProvider storage;
 
     @Autowired
-    public GithubClient(ScrapperConfig scrapperConfig, Storage storage) {
+    public GithubClient(ScrapperConfig scrapperConfig, StorageProvider storage) {
         this.restTemplate = scrapperConfig.restTemplate();
         this.githubToken = scrapperConfig.githubToken();
         this.storage = storage;
@@ -51,15 +51,14 @@ public class GithubClient implements IClient {
     }
 
 
-
-
     @Override
     public GithubAnswer checkForUpdates(String link) {
 
 
         PRAnswer prAnswer = PRUpdatedAt(link);
         if (prAnswer != null) {
-            if (storage.setPR(link, prAnswer)) {
+            if (storage.updateTime(link, prAnswer.getUpdatedAt())) {
+                prAnswer.setHasUpdate(true);
                 return prAnswer;
             }
 
@@ -67,7 +66,8 @@ public class GithubClient implements IClient {
         IssueAnswer issueAnswer = IssuesUpdatedAt(link);
 
         if (issueAnswer != null) {
-            if (storage.setIssue(link, issueAnswer)) {
+            if (storage.updateTime(link, issueAnswer.getUpdatedAt())) {
+                issueAnswer.setHasUpdate(true);
                 return issueAnswer;
             }
 
@@ -75,45 +75,21 @@ public class GithubClient implements IClient {
 
         RepoAnswer repoAnswer = repoUpdatedAt(link);
         if (repoAnswer != null) {
-            if (storage.setRepo(link, repoAnswer)) {
+            if (storage.updateTime(link, repoAnswer.getUpdatedAt())) {
+                repoAnswer.setHasUpdate(true);
                 return repoAnswer;
             }
 
         }
-
         return new GithubAnswer(false);
     }
 
     public PRAnswer PRUpdatedAt(String link) {
-        return fetchUpdatedAt(
-            link,
-            data -> new PRAnswer(
-                (LocalDateTime) data.get("updatedAt"),
-                (String) data.get("login"),
-                (String) data.get("link"),
-                (String) data.get("description"),
-                Answer.PR,
-                true
-            ),
-            this::make_pr_url,
-            "Pull Request"
-        );
+        return fetchUpdatedAt(link, data -> new PRAnswer((LocalDateTime) data.get("updatedAt"), (String) data.get("login"), (String) data.get("link"), (String) data.get("description"), Answer.PR), this::make_pr_url, "Pull Request");
     }
 
     public IssueAnswer IssuesUpdatedAt(String link) {
-        return fetchUpdatedAt(
-            link,
-            data -> new IssueAnswer(
-                (LocalDateTime) data.get("updatedAt"),
-                (String) data.get("login"),
-                (String) data.get("link"),
-                (String) data.get("description"),
-                Answer.ISSUE,
-                true
-            ),
-            this::make_issue_url,
-            "Issue"
-        );
+        return fetchUpdatedAt(link, data -> new IssueAnswer((LocalDateTime) data.get("updatedAt"), (String) data.get("login"), (String) data.get("link"), (String) data.get("description"), Answer.ISSUE), this::make_issue_url, "Issue");
     }
 
     public RepoAnswer repoUpdatedAt(String link) {
@@ -134,23 +110,17 @@ public class GithubClient implements IClient {
         logger.info("Последнее обновление в REPO {}, {}", link, updatedAt);
 
         Instant instant = Instant.parse(updatedAt.toString());
-        return new RepoAnswer(LocalDateTime.ofInstant(instant, ZoneOffset.UTC), Answer.REPO, true);
+        return new RepoAnswer(LocalDateTime.ofInstant(instant, ZoneOffset.UTC), Answer.REPO);
     }
 
-    private <T> T fetchUpdatedAt(
-        String link,
-        Function<Map<String, Object>, T> mapper,
-        Function<String, String> urlMaker,
-        String entityName
-    ) {
+    private <T> T fetchUpdatedAt(String link, Function<Map<String, Object>, T> mapper, Function<String, String> urlMaker, String entityName) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "token " + githubToken);
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0");
 
             HttpEntity<Map> request = new HttpEntity<>(headers);
-            ResponseEntity<List> response = restTemplate.exchange(
-                urlMaker.apply(link), HttpMethod.GET, request, List.class);
+            ResponseEntity<List> response = restTemplate.exchange(urlMaker.apply(link), HttpMethod.GET, request, List.class);
 
             List<Map<String, Object>> entities = response.getBody();
             Object updatedAt = null;
@@ -175,12 +145,7 @@ public class GithubClient implements IClient {
             logger.info("Последнее обновление в {} {}, {}", entityName, link, updatedAt);
 
             Instant instant = Instant.parse(updatedAt.toString());
-            return mapper.apply(Map.of(
-                "updatedAt", LocalDateTime.ofInstant(instant, ZoneOffset.UTC),
-                "login", login,
-                "link", link,
-                "description", description
-            ));
+            return mapper.apply(Map.of("updatedAt", LocalDateTime.ofInstant(instant, ZoneOffset.UTC), "login", login, "link", link, "description", description));
         } catch (Exception e) {
             logger.error("Ошибка при получении {} для {}: {}", entityName, link, e.getMessage());
             return null;

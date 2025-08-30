@@ -1,14 +1,13 @@
 package backend.academy.scrapper.service;
 
 
-import backend.academy.scrapper.Storage;
 import backend.academy.scrapper.api.AddLinkRequest;
 import backend.academy.scrapper.api.ListLinksResponse;
 import backend.academy.scrapper.api.RemoveLinkRequest;
+import backend.academy.scrapper.bd.StorageProvider;
+import backend.academy.scrapper.service.github.GithubClient;
+import backend.academy.scrapper.service.stackoverflow.SOClient;
 import java.util.Set;
-import backend.academy.scrapper.service.clients.ClientAnswer;
-import backend.academy.scrapper.service.clients.github.GithubClient;
-import backend.academy.scrapper.service.clients.stackoverflow.SOClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,13 +28,13 @@ public class TrackerService {
     protected final GithubClient githubClient;
     protected final SOClient soClient;
     protected final RestTemplate restTemplate;
-    protected final Storage storage;
+    protected final StorageProvider storage;
 
     @Value("http://localhost:8080/api/bot")
     private String botAPI;
 
     @Autowired
-    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate, Storage storage) {
+    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate, StorageProvider storage) {
         this.githubClient = githubClient;
         this.soClient = soClient;
         this.restTemplate = restTemplate;
@@ -74,10 +73,10 @@ public class TrackerService {
                 if (clientAnswer.hasUpdates()) {
                     logger.info("Отправляется ответ клиенту");
                     HttpHeaders headers = createHeaders(clientAnswer, link);
-                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(
-                        storage.getSubscribers(link),
-                        headers
-                    );
+                    logger.info("Подписчики: {}", storage.getSubscribers(link));
+                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(storage.getSubscribers(link),
+
+                        headers);
                     restTemplate.exchange(botAPI + "/updates", HttpMethod.POST, httpEntity, Void.class);
 
                 }

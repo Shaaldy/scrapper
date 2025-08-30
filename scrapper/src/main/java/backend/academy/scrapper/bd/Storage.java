@@ -1,4 +1,4 @@
-package backend.academy.scrapper;
+package backend.academy.scrapper.bd;
 
 import backend.academy.scrapper.api.LinkResponse;
 import backend.academy.scrapper.api.ListLinksResponse;
@@ -7,30 +7,24 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import backend.academy.scrapper.service.clients.Updatable;
-import backend.academy.scrapper.service.clients.github.IssueAnswer;
-import backend.academy.scrapper.service.clients.github.PRAnswer;
-import backend.academy.scrapper.service.clients.github.RepoAnswer;
-import backend.academy.scrapper.service.clients.stackoverflow.SOCommentAnswer;
-import backend.academy.scrapper.service.clients.stackoverflow.SORequestAnswer;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Repository;
 
-@Component
-public class Storage {
+@Repository
+@Profile("in-memory")
+public class Storage implements StorageProvider {
 
     private final Map<Long, ListLinksResponse> userLinks = new HashMap<>();
     private final Map<String, Set<Long>> linkSubscribers = new HashMap<>();
-    private final Map<String, SOCommentAnswer> lastSOComment = new HashMap<>();
-    private final Map<String, SORequestAnswer> lastSORequest = new HashMap<>();
-    private final Map<String, PRAnswer> lastPRAnswer = new HashMap<>();
-    private final Map<String, IssueAnswer>  lastIssueAnswer = new HashMap<>();
-    private final Map<String, RepoAnswer> lastRepoAnswer = new HashMap<>();
+    private final Map<String, LocalDateTime> lastLinkUpdate = new HashMap<>();
 
 
+    @Override
     public boolean addUser(Long chatId) {
         return userLinks.putIfAbsent(chatId, new ListLinksResponse()) == null;
     }
 
+    @Override
     public boolean removeUser(Long chatId) {
         ListLinksResponse links = userLinks.remove(chatId);
         if (links != null) {
@@ -42,10 +36,12 @@ public class Storage {
         return false;
     }
 
+    @Override
     public ListLinksResponse getLinks(Long chatId) {
         return userLinks.getOrDefault(chatId, new ListLinksResponse());
     }
 
+    @Override
     public void addLink(Long chatId, String url) {
         userLinks.computeIfAbsent(chatId, _ -> new ListLinksResponse());
 
@@ -55,6 +51,7 @@ public class Storage {
         linkSubscribers.computeIfAbsent(url, _ -> new HashSet<>()).add(chatId);
     }
 
+    @Override
     public boolean removeLink(Long chatId, String url) {
         ListLinksResponse links = userLinks.get(chatId);
         if (links != null && links.deleteLink(url)) {
@@ -74,49 +71,31 @@ public class Storage {
         }
     }
 
+    @Override
     public Set<Long> getSubscribers(String url) {
         return linkSubscribers.getOrDefault(url, Set.of());
     }
 
+    @Override
     public Set<String> getAllTrackedLinks() {
         return linkSubscribers.keySet();
     }
 
-
-    public boolean setPR(String link, PRAnswer prAnswer) {
-        return setAnswer(link, prAnswer, lastPRAnswer);
-    }
-
-    public boolean setIssue(String link, IssueAnswer issueAnswer) {
-        return setAnswer(link, issueAnswer, lastIssueAnswer);
-    }
-
-    public boolean setRepo(String link, RepoAnswer repoAnswer) {
-        return setAnswer(link, repoAnswer, lastRepoAnswer);
-    }
-
-    public boolean setSOR(String link, SORequestAnswer sor) {
-        return setAnswer(link, sor, lastSORequest);
-    }
-
-    public boolean setSOC(String link, SOCommentAnswer soc) {
-        return setAnswer(link, soc, lastSOComment);
-    }
-
-    private <T extends Updatable> boolean setAnswer(
-        String link,
-        T newAnswer,
-        Map<String, T> storage
-    ) {
-        T previous = storage.get(link);
-        LocalDateTime prevTime = previous != null ? previous.getUpdatedAt() : null;
-
-        if (prevTime == null || prevTime.isBefore(newAnswer.getUpdatedAt())) {
-            storage.put(link, newAnswer);
-            return prevTime != null; // true = обновление, false = первый раз
+    @Override
+    public boolean updateTime(String url, LocalDateTime time) {
+        if (!linkSubscribers.containsKey(url)) {
+            throw new IllegalStateException("User does not exist");
         }
-        return false;
+        if (lastLinkUpdate.containsKey(url)) {
+            if (lastLinkUpdate.get(url).isBefore(time)) {
+                lastLinkUpdate.put(url, time);
+                return true;
+            }
+            return false;
+        } else {
+            lastLinkUpdate.put(url, time);
+            return true;
+        }
     }
-
 }
 

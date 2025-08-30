@@ -1,4 +1,4 @@
-package backend.academy.scrapper.service.clients;
+package backend.academy.scrapper.service;
 
 import java.time.LocalDateTime;
 

@@ -1,11 +1,11 @@
-package backend.academy.scrapper.service.clients.stackoverflow;
+package backend.academy.scrapper.service.stackoverflow;
 
 import backend.academy.scrapper.ScrapperConfig;
 import backend.academy.scrapper.ScrapperConfig.StackOverflowCredentials;
-import backend.academy.scrapper.Storage;
+import backend.academy.scrapper.bd.StorageProvider;
 import backend.academy.scrapper.service.Answer;
 import backend.academy.scrapper.service.IClient;
-import backend.academy.scrapper.service.clients.github.GithubClient;
+import backend.academy.scrapper.service.github.GithubClient;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -33,10 +33,10 @@ public class SOClient implements IClient {
     private final Logger logger = LoggerFactory.getLogger(GithubClient.class);
     private final RestTemplate restTemplate;
     private final StackOverflowCredentials stackOverflowCredentials;
-    private final Storage storage;
+    private final StorageProvider storage;
 
     @Autowired
-    public SOClient(ScrapperConfig scrapperConfig, Storage storage) {
+    public SOClient(ScrapperConfig scrapperConfig, StorageProvider storage) {
         this.restTemplate = scrapperConfig.restTemplate();
         this.stackOverflowCredentials = scrapperConfig.stackOverflow();
         this.storage = storage;
@@ -116,7 +116,7 @@ public class SOClient implements IClient {
         Optional<Map<String, Object>> optionalOwner = fetchFirstItem(makeUrlRequest(link));
         if (optionalOwner.isEmpty()) {
             logger.info("Нет ответов по ссылке {}", link);
-            return new SOAnswer( false);
+            return new SOAnswer(false);
         }
 
         Map<String, Object> owner = optionalOwner.get();
@@ -132,7 +132,7 @@ public class SOClient implements IClient {
         Instant instant = Instant.ofEpochSecond(lastActivity);
         logger.info("Последняя активность ссылки {} - получено {}", link, lastActivity);
 
-        return new SORequestAnswer(LocalDateTime.ofInstant(instant, ZoneOffset.UTC), author, link, title, text, Answer.SO_REQUEST, true);
+        return new SORequestAnswer(LocalDateTime.ofInstant(instant, ZoneOffset.UTC), author, link, title, text, Answer.SO_REQUEST);
     }
 
 
@@ -140,13 +140,13 @@ public class SOClient implements IClient {
         Optional<Map<String, Object>> optionalOwner = fetchFirstItem(makeUrlComments(link));
         if (optionalOwner.isEmpty()) {
             logger.info("Нет комментариев по ссылке {}", link);
-            return new SOCommentAnswer(null, null, link, title, null, Answer.SO_COMMENT, false);
+            return new SOCommentAnswer(null, null, link, title, null, Answer.SO_COMMENT);
         }
 
         Map<String, Object> owner = optionalOwner.get();
         Integer creationDate = (Integer) owner.get("creation_date");
         if (creationDate == null) {
-            return new SOCommentAnswer(null, null, link, title, null, Answer.SO_COMMENT, false);
+            return new SOCommentAnswer(null, null, link, title, null, Answer.SO_COMMENT);
         }
 
         String text = cleanText((String) owner.get("body"));
@@ -156,7 +156,7 @@ public class SOClient implements IClient {
         Instant instant = Instant.ofEpochSecond(creationDate);
         logger.info("Последняя активность ссылки {} - получено {}", link, creationDate);
 
-        return new SOCommentAnswer(LocalDateTime.ofInstant(instant, ZoneOffset.UTC), author, link, title, text, Answer.SO_COMMENT, true);
+        return new SOCommentAnswer(LocalDateTime.ofInstant(instant, ZoneOffset.UTC), author, link, title, text, Answer.SO_COMMENT);
     }
 
 
@@ -174,15 +174,17 @@ public class SOClient implements IClient {
         String title = getTitle(link);
         Object sor = getSOR(link, title);
         if (sor instanceof SORequestAnswer) {
-            if (storage.setSOR(link, (SORequestAnswer) sor)) {
+            if (storage.updateTime(link, ((SORequestAnswer) sor).getUpdatedAt())) {
+                ((SORequestAnswer) sor).setHasUpdate(true);
                 return (SORequestAnswer) sor;
             }
         }
 
-        Object soc = getSOC(link, title);
-        if (soc instanceof SOCommentAnswer) {
-            if (storage.setSOC(link, (SOCommentAnswer) soc)) {
-                return (SOCommentAnswer )soc;
+        SOCommentAnswer soc = getSOC(link, title);
+        if (soc != null) {
+            if (storage.updateTime(link, soc.getUpdatedAt())) {
+                soc.setHasUpdate(true);
+                return soc;
             }
         }
         return new SOAnswer(false);

@@ -57,6 +57,7 @@ public class BotService {
         System.out.println("Текущее состояние: " + state);
         if (state == State.START) {
             if (text.equals("/start")) registerChat(chatId);
+            else if (text.equals("/delete")) deleteChat(chatId);
             else {
                 sendMessage("Вы еще не зарегестрированы", chatId);
             }
@@ -155,6 +156,7 @@ public class BotService {
             logger.error(e.getMessage());
         } finally {
             userStates.remove(chatId);
+
         }
     }
 
