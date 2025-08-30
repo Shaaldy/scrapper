@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import backend.academy.scrapper.service.clients.github.GithubClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -54,7 +55,7 @@ class GithubClientTest {
         String expectedUrl = "https://api.github.com/repos/user/repo";
         when(restTemplate.exchange(eq(expectedUrl), eq(HttpMethod.GET), ArgumentMatchers.<HttpEntity<Map>>any(), eq(Map.class))).thenReturn(mockResponse);
 
-        LocalDateTime updated = githubClient.getUpdatedAt(testRepo);
+        LocalDateTime updated = githubClient.repoUpdatedAt(testRepo);
 
         Instant instant = Instant.parse(isoTime);
         LocalDateTime expected = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
@@ -73,7 +74,7 @@ class GithubClientTest {
 
         when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(), eq(Map.class))).thenReturn(mockResponse);
 
-        Exception ex = assertThrows(IllegalArgumentException.class, () -> githubClient.getUpdatedAt(testRepo));
+        Exception ex = assertThrows(IllegalArgumentException.class, () -> githubClient.repoUpdatedAt(testRepo));
         assertThat(ex.getMessage()).contains("Missing 'updated_at'");
     }
 

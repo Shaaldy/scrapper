@@ -1,52 +1,48 @@
 package backend.academy.scrapper.api;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class ListLinksResponse {
-    Set<LinkResponse> links;
-    Integer size;
+    private Set<LinkResponse> links = new HashSet<>();
 
     public ListLinksResponse(Set<LinkResponse> links) {
-        this.links = links;
-        this.size = links.size();
+        this.links = new HashSet<>(links);
+    }
+
+    public ListLinksResponse(Long id, List<String> urls) {
+        this.links = new HashSet<>();
+        for (String url : urls) {
+            this.links.add(new LinkResponse(id, url));
+        }
     }
 
     public ListLinksResponse() {
-        this.links = new HashSet<>();
-        this.size = 0;
     }
 
     public void addLink(LinkResponse link) {
-        this.links.add(link);
+        links.add(link);
     }
 
     public boolean deleteLink(String linked) {
-        boolean res = false;
-        for (LinkResponse link : links) {
-            if (link.getLink().equals(linked)) {
-                links.remove(link);
-                res = true;
-            }
-        }
-        this.size = links.size();
-        return res;
+        return links.removeIf(link -> link.getLink().equals(linked));
     }
-
 
     public Set<LinkResponse> getLinks() {
         return links;
     }
 
     public void setLinks(Set<LinkResponse> links) {
-        this.links = links;
+        this.links = new HashSet<>(links);
     }
 
-    public Integer getSize() {
-        return size;
+    public int getSize() {
+        return links.size();
     }
 
     public boolean isEmpty() {
-        return size == 0;
+        return links.isEmpty();
     }
 }
+

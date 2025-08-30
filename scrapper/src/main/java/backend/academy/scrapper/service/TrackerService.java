@@ -1,11 +1,12 @@
 package backend.academy.scrapper.service;
 
 
-import backend.academy.scrapper.Storage;
 import backend.academy.scrapper.api.AddLinkRequest;
 import backend.academy.scrapper.api.ListLinksResponse;
 import backend.academy.scrapper.api.RemoveLinkRequest;
-import java.time.LocalDateTime;
+import backend.academy.scrapper.bd.StorageProvider;
+import backend.academy.scrapper.service.github.GithubClient;
+import backend.academy.scrapper.service.stackoverflow.SOClient;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,13 +28,13 @@ public class TrackerService {
     protected final GithubClient githubClient;
     protected final SOClient soClient;
     protected final RestTemplate restTemplate;
-    protected final Storage storage;
+    protected final StorageProvider storage;
 
     @Value("http://localhost:8080/api/bot")
     private String botAPI;
 
     @Autowired
-    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate, Storage storage) {
+    public TrackerService(GithubClient githubClient, SOClient soClient, RestTemplate restTemplate, StorageProvider storage) {
         this.githubClient = githubClient;
         this.soClient = soClient;
         this.restTemplate = restTemplate;
@@ -61,28 +62,46 @@ public class TrackerService {
         return storage.removeLink(chatId, req.getLink());
     }
 
-    private boolean isUpdated(IClient client, String link) {
-        LocalDateTime now = client.getUpdatedAt(link);
-        return storage.isUpdated(link, now);
-    }
 
     @Scheduled(fixedRate = 5000)
     protected void sendHTTPResponse() {
         try {
             for (String link : storage.getAllTrackedLinks()) {
                 IClient client = getClientForLink(link);
-                if (isUpdated(client, link)) {
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.set("Url", link);
-                    headers.set("Description", "нет описания, временная затычка");
+                ClientAnswer clientAnswer = client.checkForUpdates(link);
 
-                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(storage.getSubscribers(link), headers);
+                if (clientAnswer.hasUpdates()) {
+                    logger.info("Отправляется ответ клиенту");
+                    HttpHeaders headers = createHeaders(clientAnswer, link);
+                    logger.info("Подписчики: {}", storage.getSubscribers(link));
+                    HttpEntity<Set<Long>> httpEntity = new HttpEntity<>(storage.getSubscribers(link),
+
+                        headers);
                     restTemplate.exchange(botAPI + "/updates", HttpMethod.POST, httpEntity, Void.class);
+
                 }
             }
         } catch (Exception e) {
             logger.error("Ошибка при отправке обновлений: {}", e.getMessage(), e);
         }
+    }
+
+    private HttpHeaders createHeaders(ClientAnswer clientAnswer, String link) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("url", link);  // ← lowercase
+        headers.set("update_type", clientAnswer.getAnswer().toString());  // ← подчеркивание
+        headers.set("updated_at", clientAnswer.getUpdatedAt().toString());  // ← lowercase
+
+        if (clientAnswer.getAnswer() != Answer.SO || clientAnswer.getAnswer() != Answer.PR) {
+            populateGitHubHeaders(headers, clientAnswer);
+        }
+
+        return headers;
+    }
+
+    private void populateGitHubHeaders(HttpHeaders headers, ClientAnswer answer) {
+        headers.set("description", answer.getDescription());
+        headers.set("author", answer.getAuthor());
     }
 
 

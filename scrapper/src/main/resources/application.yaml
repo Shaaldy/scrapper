@@ -15,6 +15,15 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  datasource:
+    jpa:
+      show-sql: true
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  profiles:
+    active: db
 
 server:
   port: 8081

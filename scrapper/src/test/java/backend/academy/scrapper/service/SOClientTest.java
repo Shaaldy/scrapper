@@ -3,6 +3,7 @@ package backend.academy.scrapper.service;
 
 
 import backend.academy.scrapper.ScrapperConfig;
+import backend.academy.scrapper.service.clients.stackoverflow.SOClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
