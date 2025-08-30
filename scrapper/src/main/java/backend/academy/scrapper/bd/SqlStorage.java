@@ -76,7 +76,7 @@ public class SqlStorage implements StorageProvider {
             String selectIdSql = "SELECT id FROM links WHERE url = :url";
             linkId = jdbcTemplate.queryForObject(selectIdSql, params, Long.class);
         } else {
-            linkId = linkIds.get(0);
+            linkId = linkIds.getFirst();
         }
 
         // 2. Привяжем ссылку к пользователю
